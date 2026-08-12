@@ -452,6 +452,9 @@ Estas capacidades están planeadas, pero no deben bloquear la primera integraci�
 - Detección de emociones con cautela y validación independiente.
 - Kubernetes para despliegue distribuido.
 
+Para el estado real del backend y la propuesta de runtime observable, consultar
+[`ARGUS_BACKEND_STATUS_RUNTIME.md`](./ARGUS_BACKEND_STATUS_RUNTIME.md).
+
 ## 15. Texto resumido para una diapositiva
 
 ### ARGUS: sistema distribuido de vigilancia inteligente
