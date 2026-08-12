@@ -90,7 +90,24 @@ class CameraAgent:
             "vision_mode": VISION_MODE,
         }
         try:
-            requests.post(f"{CORE_API_URL}/api/cameras", json=payload, timeout=3)
+            response = requests.post(
+                f"{CORE_API_URL}/api/cameras", json=payload, timeout=3
+            )
+            if response.status_code == 409:
+                requests.patch(
+                    f"{CORE_API_URL}/api/cameras/{CAMERA_ID}",
+                    json={
+                        "name": CAMERA_NAME,
+                        "type": CAMERA_TYPE,
+                        "stream_url": EDGE_STREAM_URL,
+                        "source": CAMERA_SOURCE,
+                        "vision_mode": VISION_MODE,
+                        "metadata": {
+                            "network": {"iot_segment": IOT_SEGMENT}
+                        },
+                    },
+                    timeout=3,
+                )
         except requests.RequestException:
             pass
 
