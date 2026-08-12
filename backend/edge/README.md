@@ -4,9 +4,22 @@ El agente Edge corre en la máquina donde está conectada la webcam o donde se
 recibe el stream del teléfono. No debe ejecutarse como réplica del API: cada
 cámara física necesita su propio proceso.
 
-## Ejecución local
+## Ejecución local en Windows
 
-Desde `backend/edge`:
+Docker Desktop ejecuta contenedores Linux y normalmente no expone la webcam
+integrada de Windows como `/dev/video0`. Por eso MongoDB y el API se levantan
+con Compose, pero el agente de la cámara de la laptop se ejecuta directamente
+en Windows.
+
+Primero, desde la raíz del proyecto:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d mongodb api
+docker compose ps
+```
+
+Después, desde `backend/edge`:
 
 ```powershell
 python -m venv .venv
@@ -15,16 +28,32 @@ pip install -r requirements.txt
 
 $env:CORE_API_URL="http://localhost:8000"
 $env:CAMERA_ID="CAM-001"
-$env:CAMERA_NAME="USB Camera Gustavo"
+$env:CAMERA_NAME="Camera Laptop Gustavo"
+$env:CAMERA_TYPE="integrated"
 $env:CAMERA_SOURCE="0"
-$env:EDGE_STREAM_URL="http://TAILSCALE_IP_DE_ESTA_MAQUINA:8081/stream"
+$env:EDGE_STREAM_URL="http://localhost:8081/stream"
 uvicorn camera_agent:app --host 0.0.0.0 --port 8081
 ```
 
+Abre `http://localhost:8081/stream` para probar el video y
+`http://localhost:8000/api/cameras` para confirmar que la cámara fue registrada.
+
 Para un teléfono o una cámara IP, cambia `CAMERA_SOURCE` por su URL MJPEG/RTSP.
 El frontend puede usar directamente `stream_url` recibido en
-`GET /api/cameras`, siempre que esa URL sea accesible por Tailscale.
+`GET /api/cameras`, siempre que esa URL sea accesible por la red.
 
 El agente registra la cámara, envía un heartbeat cada cinco segundos y reporta
 eventos `motion` con OpenCV. Si el API está caído, el stream local puede seguir
 activo y el agente reintentará los heartbeats.
+
+## Edge dentro de Compose
+
+Para una cámara IP, un stream de teléfono o un host Linux con `/dev/video0`,
+puedes usar el servicio Edge del Compose:
+
+```powershell
+docker compose --profile edge up -d --build edge
+```
+
+En Windows, `CAMERA_SOURCE=0` dentro del contenedor no representa la webcam de
+la laptop. Para la webcam integrada usa el modo local anterior.

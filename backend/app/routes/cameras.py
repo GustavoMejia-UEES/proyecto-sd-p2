@@ -73,6 +73,7 @@ def create_camera(payload: CameraCreate):
         "updated_at": now,
     }
     collection.insert_one(camera)
+    camera.pop("_id", None)
     return camera
 
 

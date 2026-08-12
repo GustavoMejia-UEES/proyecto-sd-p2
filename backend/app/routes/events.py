@@ -54,6 +54,7 @@ async def create_event(payload: EventCreate):
         "updated_at": now_iso(),
     }
     get_collection("events").insert_one(event)
+    event.pop("_id", None)
     await event_manager.broadcast({"type": "event_created", "event": event})
     return event
 
