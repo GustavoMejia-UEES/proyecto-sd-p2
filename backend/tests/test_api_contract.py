@@ -34,6 +34,18 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(task.estado, "Pendiente")
         self.assertEqual(update.estado, "Completada")
 
+    def test_camera_task_payload_keeps_event_context(self):
+        task = TaskCreate(
+            titulo="Revisar alerta",
+            source="camera",
+            camera_id="CAM-001",
+            event_id="EVT-001",
+            priority="high",
+        )
+        self.assertEqual(task.source, "camera")
+        self.assertEqual(task.camera_id, "CAM-001")
+        self.assertEqual(task.priority, "high")
+
     def test_camera_provisioning_payload_keeps_network_target(self):
         config = CameraProvisionRequest(
             camera_id="CAM-001",

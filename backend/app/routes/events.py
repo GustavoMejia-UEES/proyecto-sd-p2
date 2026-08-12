@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.database import get_collection
 from app.realtime import event_manager
+from app.routes.tasks import create_task_from_event
 from app.schemas import EventCreate, EventUpdate
 
 router = APIRouter(prefix="/api/events", tags=["events"])
@@ -55,7 +56,13 @@ async def create_event(payload: EventCreate):
     }
     get_collection("events").insert_one(event)
     event.pop("_id", None)
+    generated_task = create_task_from_event(event)
     await event_manager.broadcast({"type": "event_created", "event": event})
+    if generated_task:
+        await event_manager.broadcast(
+            {"type": "task_created", "task": generated_task}
+        )
+        event["generated_task"] = generated_task
     return event
 
 

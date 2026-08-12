@@ -1,10 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.config import CAMERA_TASK_COOLDOWN_SECONDS
 from app.database import get_collection
-from app.schemas import TaskCreate, TaskUpdate
+from app.schemas import EventType, TaskCreate, TaskPriority, TaskUpdate
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -16,6 +17,52 @@ def now_iso():
 def _serialize(task: dict) -> dict:
     task.pop("_id", None)
     return task
+
+
+def _task_priority(event_type: EventType) -> TaskPriority:
+    if event_type in ("camera_offline", "camera_degraded", "object_detected"):
+        return "high"
+    if event_type == "person":
+        return "medium"
+    return "low"
+
+
+def create_task_from_event(event: dict) -> dict | None:
+    """Create one operational task per camera/event type during the cooldown."""
+    event_type = event["type"]
+    cutoff = (
+        datetime.now(timezone.utc)
+        - timedelta(seconds=CAMERA_TASK_COOLDOWN_SECONDS)
+    ).isoformat()
+    collection = get_collection("tasks")
+    duplicate = collection.find_one(
+        {
+            "source": "camera",
+            "camera_id": event["camera_id"],
+            "event_type": event_type,
+            "created_at": {"$gte": cutoff},
+            "estado": {"$ne": "Completada"},
+        }
+    )
+    if duplicate:
+        return None
+
+    now = now_iso()
+    description = event.get("description") or f"Evento {event_type} detectado"
+    task = {
+        "id": f"TASK-{uuid4().hex[:8].upper()}",
+        "titulo": description,
+        "estado": "Pendiente",
+        "source": "camera",
+        "camera_id": event["camera_id"],
+        "event_id": event["id"],
+        "event_type": event_type,
+        "priority": _task_priority(event_type),
+        "created_at": now,
+        "updated_at": now,
+    }
+    collection.insert_one(task)
+    return _serialize(task)
 
 
 @router.get("")

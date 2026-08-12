@@ -9,7 +9,7 @@ from app.realtime import event_manager
 
 app = FastAPI(
     title=APP_NAME,
-    version="0.4.0",
+    version="0.5.0",
     description="ARGUS distributed vision and device monitoring core API",
 )
 
