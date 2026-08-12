@@ -6,6 +6,13 @@ param(
     [int]$Port = 8081,
     [string]$CoreApiUrl = "http://localhost:8000",
     [string]$IotSegment = "iot-cameras",
+    [int]$CaptureWidth = 1280,
+    [int]$CaptureHeight = 720,
+    [int]$CaptureFps = 30,
+    [int]$JpegQuality = 82,
+    [int]$DetectionInterval = 3,
+    [int]$DetectionInputSize = 640,
+    [string]$DetectionDevice = "",
     [ValidateSet("motion", "cctv", "activity", "expression")]
     [string]$VisionMode = "motion",
     [switch]$Vision
@@ -37,6 +44,13 @@ $env:CAMERA_TYPE = $CameraType
 $env:CAMERA_SOURCE = $CameraSource
 $env:EDGE_STREAM_URL = "http://localhost:$Port/stream"
 $env:IOT_SEGMENT = $IotSegment
+$env:CAPTURE_WIDTH = $CaptureWidth
+$env:CAPTURE_HEIGHT = $CaptureHeight
+$env:CAPTURE_FPS = $CaptureFps
+$env:JPEG_QUALITY = $JpegQuality
+$env:DETECTION_INTERVAL = $DetectionInterval
+$env:DETECTION_INPUT_SIZE = $DetectionInputSize
+$env:DETECTION_DEVICE = $DetectionDevice
 $env:VISION_MODE = $VisionMode
 $env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
 if ($Vision -and $VisionMode -eq "motion") {

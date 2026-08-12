@@ -23,6 +23,11 @@ CAMERA_TYPE = os.getenv("CAMERA_TYPE", "usb")
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")
 EDGE_STREAM_URL = os.getenv("EDGE_STREAM_URL", "http://localhost:8081/stream")
 IOT_SEGMENT = os.getenv("IOT_SEGMENT", "iot-cameras")
+CAPTURE_WIDTH = int(os.getenv("CAPTURE_WIDTH", "1280"))
+CAPTURE_HEIGHT = int(os.getenv("CAPTURE_HEIGHT", "720"))
+CAPTURE_FPS = int(os.getenv("CAPTURE_FPS", "30"))
+CAPTURE_BUFFER_SIZE = max(1, int(os.getenv("CAPTURE_BUFFER_SIZE", "1")))
+JPEG_QUALITY = max(40, min(95, int(os.getenv("JPEG_QUALITY", "82"))))
 MOTION_ENABLED = env_bool("MOTION_ENABLED", True)
 MOTION_THRESHOLD = float(os.getenv("MOTION_THRESHOLD", "18"))
 MOTION_COOLDOWN_SECONDS = int(os.getenv("MOTION_COOLDOWN_SECONDS", "5"))
@@ -34,6 +39,8 @@ EFFECTIVE_VISION_MODE = (
 DETECTION_INTERVAL = max(1, int(os.getenv("DETECTION_INTERVAL", "3")))
 DETECTION_CONFIDENCE = float(os.getenv("DETECTION_CONFIDENCE", "0.45"))
 DETECTION_MODEL = os.getenv("DETECTION_MODEL", "yolo11n.pt")
+DETECTION_INPUT_SIZE = int(os.getenv("DETECTION_INPUT_SIZE", "640"))
+DETECTION_DEVICE = os.getenv("DETECTION_DEVICE", "")
 DETECTION_EVENT_COOLDOWN_SECONDS = float(
     os.getenv("DETECTION_EVENT_COOLDOWN_SECONDS", "8")
 )
@@ -72,12 +79,21 @@ class CameraAgent:
         self.detection_latency_ms = 0.0
         self.last_detection_at = None
         self.detection_event_times = {}
+        self.detection_condition = threading.Condition()
+        self.pending_detection_frame = None
+        self.detection_worker = None
 
     def start(self):
         if self.running:
             return
         self.running = True
         self._load_detector()
+        if self.model is not None:
+            self.detection_worker = threading.Thread(
+                target=self._detection_loop,
+                daemon=True,
+            )
+            self.detection_worker.start()
         self.worker = threading.Thread(target=self._capture_loop, daemon=True)
         self.worker.start()
 
@@ -85,6 +101,8 @@ class CameraAgent:
         self.running = False
         if self.capture:
             self.capture.release()
+        with self.detection_condition:
+            self.detection_condition.notify_all()
         with self.frame_condition:
             self.frame_condition.notify_all()
 
@@ -184,15 +202,34 @@ class CameraAgent:
     def _run_detection(self, frame):
         if self.model is None or self.frame_number % DETECTION_INTERVAL:
             return
+        with self.detection_condition:
+            self.pending_detection_frame = frame.copy()
+            self.detection_condition.notify()
+
+    def _detection_loop(self):
+        while self.running:
+            with self.detection_condition:
+                while self.running and self.pending_detection_frame is None:
+                    self.detection_condition.wait(timeout=0.5)
+                if not self.running:
+                    return
+                frame = self.pending_detection_frame
+                self.pending_detection_frame = None
+            self._infer_detection(frame)
+
+    def _infer_detection(self, frame):
         started = time.perf_counter()
         try:
-            results = self.model.track(
-                frame,
-                persist=True,
-                conf=DETECTION_CONFIDENCE,
-                classes=list(DETECTION_CLASSES) or None,
-                verbose=False,
-            )
+            tracking_options = {
+                "persist": True,
+                "conf": DETECTION_CONFIDENCE,
+                "classes": list(DETECTION_CLASSES) or None,
+                "imgsz": DETECTION_INPUT_SIZE,
+                "verbose": False,
+            }
+            if DETECTION_DEVICE:
+                tracking_options["device"] = DETECTION_DEVICE
+            results = self.model.track(frame, **tracking_options)
             current = []
             for result in results:
                 boxes = result.boxes
@@ -313,6 +350,7 @@ class CameraAgent:
             if self.capture is None or not self.capture.isOpened():
                 self.status = "degraded"
                 self.capture = cv2.VideoCapture(camera_source())
+                self._configure_capture()
                 if not self.capture.isOpened():
                     self.status = "offline"
                     self._heartbeat()
@@ -343,7 +381,11 @@ class CameraAgent:
             self._draw_detections(frame)
             self._draw_hud(frame)
 
-            ok, encoded = cv2.imencode(".jpg", frame)
+            ok, encoded = cv2.imencode(
+                ".jpg",
+                frame,
+                [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY],
+            )
             if ok:
                 with self.frame_condition:
                     self.last_frame = encoded.tobytes()
@@ -352,6 +394,17 @@ class CameraAgent:
             if time.monotonic() - last_heartbeat >= 5:
                 self._heartbeat()
                 last_heartbeat = time.monotonic()
+
+    def _configure_capture(self):
+        if self.capture is None:
+            return
+        self.capture.set(cv2.CAP_PROP_BUFFERSIZE, CAPTURE_BUFFER_SIZE)
+        if CAPTURE_WIDTH > 0:
+            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, CAPTURE_WIDTH)
+        if CAPTURE_HEIGHT > 0:
+            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, CAPTURE_HEIGHT)
+        if CAPTURE_FPS > 0:
+            self.capture.set(cv2.CAP_PROP_FPS, CAPTURE_FPS)
 
     def _detect_motion(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -409,6 +462,12 @@ def health():
         "labels": sorted({item["label"] for item in agent.detections}),
         "detection_latency_ms": agent.detection_latency_ms,
         "last_detection_at": agent.last_detection_at,
+        "capture": {
+            "target_width": CAPTURE_WIDTH,
+            "target_height": CAPTURE_HEIGHT,
+            "target_fps": CAPTURE_FPS,
+            "jpeg_quality": JPEG_QUALITY,
+        },
     }
 
 
@@ -448,6 +507,15 @@ def config():
         "requested_vision_mode": VISION_MODE,
         "detection_enabled": DETECTION_ENABLED,
         "detection_model": DETECTION_MODEL,
+        "detection_input_size": DETECTION_INPUT_SIZE,
+        "detection_device": DETECTION_DEVICE or "auto",
+        "capture": {
+            "width": CAPTURE_WIDTH,
+            "height": CAPTURE_HEIGHT,
+            "fps": CAPTURE_FPS,
+            "buffer_size": CAPTURE_BUFFER_SIZE,
+            "jpeg_quality": JPEG_QUALITY,
+        },
     }
 
 

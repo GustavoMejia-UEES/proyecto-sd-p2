@@ -77,6 +77,33 @@ puedes usar `-VisionMode motion`, `cctv`, `activity` o `expression`.
 Si no instalas el extra `-Vision`, el sistema continúa usando únicamente
 OpenCV/motion detection.
 
+## Ajuste de FPS y latencia
+
+La captura y la inferencia YOLO trabajan en hilos separados. El capturador
+prioriza el frame mÃ¡s reciente, mientras el detector descarta frames viejos
+si se queda atrÃ¡s. Esto evita que una inferencia lenta congele el stream.
+
+Para una laptop normal, empieza con esta configuraciÃ³n:
+
+```powershell
+.\scripts\start-edge.ps1 `
+  -CameraId CAM-001 `
+  -CameraName "Camera Laptop Gustavo" `
+  -CameraSource 0 `
+  -Port 8091 `
+  -Vision `
+  -VisionMode cctv `
+  -CaptureWidth 1280 `
+  -CaptureHeight 720 `
+  -DetectionInterval 3 `
+  -DetectionInputSize 640
+```
+
+Si el FPS baja, sube `-DetectionInterval` a `5` o baja `-DetectionInputSize`
+a `416`. Si necesitas mÃ¡s detalle y tienes GPU, mantÃ©n `640` y usa
+`-DetectionDevice 0`. El endpoint `/health` permite comparar `fps` contra
+`detection_latency_ms` despuÃ©s de cada ajuste.
+
 ## Edge dentro de Compose
 
 Para una cámara IP, un stream de teléfono o un host Linux con `/dev/video0`,
