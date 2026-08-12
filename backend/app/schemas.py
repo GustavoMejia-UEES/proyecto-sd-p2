@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 CameraType = Literal["usb", "integrated", "phone", "rtsp", "ip", "virtual"]
 CameraStatus = Literal["online", "offline", "degraded"]
+VisionMode = Literal["motion", "cctv", "activity", "expression"]
 EventType = Literal[
     "motion",
     "person",
@@ -23,6 +24,7 @@ class CameraCreate(BaseModel):
     stream_url: str | None = None
     source: str | None = None
     location: str | None = Field(default=None, max_length=150)
+    vision_mode: VisionMode = "motion"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -32,6 +34,7 @@ class CameraUpdate(BaseModel):
     stream_url: str | None = None
     source: str | None = None
     location: str | None = Field(default=None, max_length=150)
+    vision_mode: VisionMode | None = None
     metadata: dict[str, Any] | None = None
 
 
@@ -52,6 +55,7 @@ class CameraProvisionRequest(BaseModel):
     iot_segment: str = Field(default="iot-cameras", min_length=1, max_length=100)
     enabled: bool = True
     location: str | None = Field(default=None, max_length=150)
+    vision_mode: VisionMode = "motion"
 
 
 class EventCreate(BaseModel):

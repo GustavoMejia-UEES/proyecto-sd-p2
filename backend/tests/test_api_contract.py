@@ -34,6 +34,13 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(config.edge_host, "100.64.0.10")
         self.assertEqual(config.iot_segment, "iot-cameras")
 
+    def test_camera_modes_are_supported(self):
+        for mode in ("motion", "cctv", "activity", "expression"):
+            config = CameraProvisionRequest(
+                camera_id="CAM-001", name="Laptop", vision_mode=mode
+            )
+            self.assertEqual(config.vision_mode, mode)
+
 
 if __name__ == "__main__":
     unittest.main()

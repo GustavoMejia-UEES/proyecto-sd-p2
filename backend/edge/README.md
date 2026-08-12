@@ -46,6 +46,28 @@ El agente registra la cámara, envía un heartbeat cada cinco segundos y reporta
 eventos `motion` con OpenCV. Si el API está caído, el stream local puede seguir
 activo y el agente reintentará los heartbeats.
 
+## Modo CCTV con detección y cuadros
+
+Desde la raíz del proyecto, para instalar el detector YOLO opcional y activar tracking:
+
+```powershell
+.\scripts\start-edge.ps1 `
+  -CameraId CAM-001 `
+  -CameraName "Camera Laptop Gustavo" `
+  -CameraSource 0 `
+  -Port 8091 `
+  -Vision `
+  -VisionMode cctv
+```
+
+El primer arranque descargará las dependencias y el modelo `yolo11n.pt`. El
+stream mostrará cajas con etiqueta, confianza e ID de tracking. Los eventos
+`object_detected` se enviarán al API con `label`, `confidence`, `track_id` y
+`bbox` dentro de `metadata`.
+
+Si no instalas el extra `-Vision`, el sistema continúa usando únicamente
+OpenCV/motion detection.
+
 ## Edge dentro de Compose
 
 Para una cámara IP, un stream de teléfono o un host Linux con `/dev/video0`,

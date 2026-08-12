@@ -97,6 +97,7 @@ def configure_camera(payload: CameraProvisionRequest):
         "stream_url": stream_url,
         "source": payload.source,
         "location": payload.location,
+        "vision_mode": payload.vision_mode,
         "metadata": {
             "network": {
                 "edge_host": payload.edge_host,
@@ -125,6 +126,7 @@ def configure_camera(payload: CameraProvisionRequest):
             "EDGE_STREAM_URL": stream_url,
             "EDGE_PORT": str(payload.edge_port),
             "IOT_SEGMENT": payload.iot_segment,
+            "VISION_MODE": payload.vision_mode,
         },
         "start_command": (
             ".\\scripts\\start-edge.ps1 "

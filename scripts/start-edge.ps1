@@ -5,7 +5,10 @@ param(
     [string]$CameraSource = "0",
     [int]$Port = 8081,
     [string]$CoreApiUrl = "http://localhost:8000",
-    [string]$IotSegment = "iot-cameras"
+    [string]$IotSegment = "iot-cameras",
+    [ValidateSet("motion", "cctv", "activity", "expression")]
+    [string]$VisionMode = "motion",
+    [switch]$Vision
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +23,12 @@ if (-not (Test-Path $pythonPath)) {
 }
 
 Write-Host "Instalando/verificando dependencias del agente Edge..."
-& $pythonPath -m pip install -r (Join-Path $edgePath "requirements.txt")
+$requirementsFile = if ($Vision) {
+    Join-Path $edgePath "requirements-vision.txt"
+} else {
+    Join-Path $edgePath "requirements.txt"
+}
+& $pythonPath -m pip install -r $requirementsFile
 
 $env:CORE_API_URL = $CoreApiUrl
 $env:CAMERA_ID = $CameraId
@@ -29,6 +37,8 @@ $env:CAMERA_TYPE = $CameraType
 $env:CAMERA_SOURCE = $CameraSource
 $env:EDGE_STREAM_URL = "http://localhost:$Port/stream"
 $env:IOT_SEGMENT = $IotSegment
+$env:VISION_MODE = $VisionMode
+$env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
 
 Write-Host "Iniciando $CameraId en $env:EDGE_STREAM_URL usando source $CameraSource"
 Push-Location $edgePath

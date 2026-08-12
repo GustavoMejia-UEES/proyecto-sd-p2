@@ -26,6 +26,21 @@ IOT_SEGMENT = os.getenv("IOT_SEGMENT", "iot-cameras")
 MOTION_ENABLED = env_bool("MOTION_ENABLED", True)
 MOTION_THRESHOLD = float(os.getenv("MOTION_THRESHOLD", "18"))
 MOTION_COOLDOWN_SECONDS = int(os.getenv("MOTION_COOLDOWN_SECONDS", "5"))
+VISION_MODE = os.getenv("VISION_MODE", "motion").lower()
+DETECTION_ENABLED = env_bool("DETECTION_ENABLED", VISION_MODE == "cctv")
+DETECTION_INTERVAL = max(1, int(os.getenv("DETECTION_INTERVAL", "3")))
+DETECTION_CONFIDENCE = float(os.getenv("DETECTION_CONFIDENCE", "0.45"))
+DETECTION_MODEL = os.getenv("DETECTION_MODEL", "yolo11n.pt")
+DETECTION_CLASSES = {
+    int(value.strip())
+    for value in os.getenv("DETECTION_CLASSES", "").split(",")
+    if value.strip().isdigit()
+}
+
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None
 
 
 def camera_source():
@@ -43,11 +58,17 @@ class CameraAgent:
         self.worker = None
         self.last_motion_at = 0.0
         self.previous_gray = None
+        self.model = None
+        self.detections = []
+        self.detection_lock = threading.Lock()
+        self.detection_error = None
+        self.frame_number = 0
 
     def start(self):
         if self.running:
             return
         self.running = True
+        self._load_detector()
         self.worker = threading.Thread(target=self._capture_loop, daemon=True)
         self.worker.start()
 
@@ -66,11 +87,24 @@ class CameraAgent:
             "stream_url": EDGE_STREAM_URL,
             "source": CAMERA_SOURCE,
             "metadata": {"network": {"iot_segment": IOT_SEGMENT}},
+            "vision_mode": VISION_MODE,
         }
         try:
             requests.post(f"{CORE_API_URL}/api/cameras", json=payload, timeout=3)
         except requests.RequestException:
             pass
+
+    def _load_detector(self):
+        if not DETECTION_ENABLED:
+            return
+        if YOLO is None:
+            self.detection_error = "ultralytics is not installed"
+            return
+        try:
+            self.model = YOLO(DETECTION_MODEL)
+        except Exception as exc:
+            self.detection_error = str(exc)
+            self.model = None
 
     def _heartbeat(self):
         try:
@@ -97,6 +131,109 @@ class CameraAgent:
         except requests.RequestException:
             pass
 
+    def _detection_event(self, detection):
+        try:
+            requests.post(
+                f"{CORE_API_URL}/api/events",
+                json={
+                    "camera_id": CAMERA_ID,
+                    "type": "object_detected",
+                    "confidence": detection["confidence"],
+                    "object_name": detection["label"],
+                    "description": (
+                        f"{detection['label']} tracked as #{detection['track_id']}"
+                    ),
+                    "metadata": {
+                        "source": "ultralytics",
+                        "track_id": detection["track_id"],
+                        "bbox": detection["bbox"],
+                        "vision_mode": VISION_MODE,
+                    },
+                },
+                timeout=3,
+            )
+        except requests.RequestException:
+            pass
+
+    def _run_detection(self, frame):
+        if self.model is None or self.frame_number % DETECTION_INTERVAL:
+            return
+        try:
+            results = self.model.track(
+                frame,
+                persist=True,
+                conf=DETECTION_CONFIDENCE,
+                classes=list(DETECTION_CLASSES) or None,
+                verbose=False,
+            )
+            current = []
+            for result in results:
+                boxes = result.boxes
+                names = result.names
+                for index in range(len(boxes)):
+                    coordinates = boxes.xyxy[index].cpu().tolist()
+                    confidence = float(boxes.conf[index].cpu().item())
+                    class_id = int(boxes.cls[index].cpu().item())
+                    track_id = (
+                        int(boxes.id[index].cpu().item())
+                        if boxes.id is not None
+                        else None
+                    )
+                    current.append(
+                        {
+                            "label": names[class_id],
+                            "confidence": round(confidence, 4),
+                            "track_id": track_id,
+                            "bbox": [round(value) for value in coordinates],
+                        }
+                    )
+            with self.detection_lock:
+                previous_keys = {
+                    (item["label"], item["track_id"]) for item in self.detections
+                }
+                self.detections = current
+            for detection in current:
+                key = (detection["label"], detection["track_id"])
+                if key not in previous_keys:
+                    threading.Thread(
+                        target=self._detection_event,
+                        args=(detection,),
+                        daemon=True,
+                    ).start()
+        except Exception as exc:
+            self.detection_error = str(exc)
+
+    def _draw_detections(self, frame):
+        with self.detection_lock:
+            detections = list(self.detections)
+        for detection in detections:
+            x1, y1, x2, y2 = detection["bbox"]
+            label = f"{detection['label']} {detection['confidence']:.0%}"
+            if detection["track_id"] is not None:
+                label += f"  #{detection['track_id']}"
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 220, 255), 2)
+            text_size, baseline = cv2.getTextSize(
+                label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 2
+            )
+            top = max(y1 - text_size[1] - baseline - 6, 0)
+            cv2.rectangle(
+                frame,
+                (x1, top),
+                (x1 + text_size[0] + 8, y1),
+                (0, 220, 255),
+                -1,
+            )
+            cv2.putText(
+                frame,
+                label,
+                (x1 + 4, y1 - 5),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                (10, 10, 10),
+                2,
+                cv2.LINE_AA,
+            )
+
     def _capture_loop(self):
         self._register()
         last_heartbeat = 0.0
@@ -122,6 +259,7 @@ class CameraAgent:
                 continue
 
             frames += 1
+            self.frame_number += 1
             elapsed = time.monotonic() - fps_started
             if elapsed >= 1:
                 self.fps = frames / elapsed
@@ -131,6 +269,9 @@ class CameraAgent:
             self.status = "online"
             if MOTION_ENABLED:
                 self._detect_motion(frame)
+
+            self._run_detection(frame)
+            self._draw_detections(frame)
 
             ok, encoded = cv2.imencode(".jpg", frame)
             if ok:
@@ -189,6 +330,11 @@ def health():
         "status": agent.status,
         "fps": round(agent.fps, 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "vision_mode": VISION_MODE,
+        "detection_enabled": DETECTION_ENABLED,
+        "detector": DETECTION_MODEL if agent.model else None,
+        "detection_error": agent.detection_error,
+        "detections": len(agent.detections),
     }
 
 
@@ -224,6 +370,9 @@ def config():
         "core_api_url": CORE_API_URL,
         "stream_url": EDGE_STREAM_URL,
         "iot_segment": IOT_SEGMENT,
+        "vision_mode": VISION_MODE,
+        "detection_enabled": DETECTION_ENABLED,
+        "detection_model": DETECTION_MODEL,
     }
 
 

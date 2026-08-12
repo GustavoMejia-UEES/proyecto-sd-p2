@@ -89,6 +89,16 @@ Cada cámara necesita su propio proceso, identificador y puerto:
 Luego el frontend consulta `GET http://localhost:8000/api/cameras` y renderiza
 el `stream_url` de cada registro.
 
+Para activar el primer nivel de inteligencia visual en una cámara:
+
+```powershell
+.\scripts\start-edge.ps1 -CameraId CAM-001 -CameraName "Laptop" -CameraSource 0 -Port 8091 -Vision -VisionMode cctv
+```
+
+El modo `cctv` agrega detección YOLO, tracking y cuadros sobre el MJPEG. Los
+modos `activity` y `expression` quedan preparados para las siguientes capas
+de pose y análisis temporal.
+
 Para una cámara IP o teléfono, usa como `-CameraSource` su URL MJPEG/RTSP. Si
 el frontend está en otra máquina, cambia `EDGE_STREAM_URL` para usar la IP de
 Tailscale en vez de `localhost`.
