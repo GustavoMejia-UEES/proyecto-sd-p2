@@ -4,7 +4,8 @@ param(
     [string]$CameraType = "integrated",
     [string]$CameraSource = "0",
     [int]$Port = 8081,
-    [string]$CoreApiUrl = "http://localhost:8000"
+    [string]$CoreApiUrl = "http://localhost:8000",
+    [string]$IotSegment = "iot-cameras"
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,6 +28,7 @@ $env:CAMERA_NAME = $CameraName
 $env:CAMERA_TYPE = $CameraType
 $env:CAMERA_SOURCE = $CameraSource
 $env:EDGE_STREAM_URL = "http://localhost:$Port/stream"
+$env:IOT_SEGMENT = $IotSegment
 
 Write-Host "Iniciando $CameraId en $env:EDGE_STREAM_URL usando source $CameraSource"
 Push-Location $edgePath

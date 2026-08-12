@@ -19,6 +19,10 @@ Comprobaciones:
 Las credenciales locales están en `.env`, que está ignorado por Git. Para otro
 entorno, cambia únicamente ese archivo; no es necesario modificar el código.
 
+Compose separa la red `argus_core_net` —MongoDB y API— de
+`argus_iot_net` —API y agentes Edge—. El API funciona como gateway entre ambas;
+MongoDB no queda expuesto directamente al segmento IoT.
+
 ## Cámara integrada de la laptop en Windows
 
 La webcam no se expone automáticamente dentro de un contenedor Linux de Docker
@@ -35,6 +39,40 @@ Desktop. Levanta MongoDB y API con Compose y ejecuta el agente Edge en Windows:
 
 Prueba el video en <http://localhost:8081/stream>. El agente registra la cámara
 automáticamente en el API y manda heartbeats/eventos de movimiento.
+
+También puedes consultar los índices disponibles en la laptop:
+
+```text
+http://localhost:8081/discover
+```
+
+Y configurar una cámara desde el API:
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri http://localhost:8000/api/cameras/configure `
+  -ContentType "application/json" `
+  -Body '{
+    "camera_id": "CAM-001",
+    "name": "Camera Laptop Gustavo",
+    "type": "integrated",
+    "source": "0",
+    "edge_host": "localhost",
+    "edge_port": 8081,
+    "core_api_url": "http://localhost:8000",
+    "iot_segment": "iot-cameras",
+    "enabled": true
+  }'
+```
+
+La respuesta devuelve el registro de cámara, las variables del agente Edge y
+el comando listo para arrancarlo. Para la demo remota, usa como `edge_host` la
+IP Tailscale del nodo Edge y conserva `iot_segment` como `iot-cameras`.
+
+El campo `iot_segment` es la etiqueta lógica que viajará con la configuración
+de cada dispositivo. La segmentación física entre máquinas se completa después
+con la IP de Tailscale, firewall y/o ACL de la red; el endpoint no abre puertos
+ni ejecuta comandos remotos.
 
 ## Varias cámaras
 

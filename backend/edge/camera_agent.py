@@ -22,6 +22,7 @@ CAMERA_NAME = os.getenv("CAMERA_NAME", "ARGUS Edge Camera")
 CAMERA_TYPE = os.getenv("CAMERA_TYPE", "usb")
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")
 EDGE_STREAM_URL = os.getenv("EDGE_STREAM_URL", "http://localhost:8081/stream")
+IOT_SEGMENT = os.getenv("IOT_SEGMENT", "iot-cameras")
 MOTION_ENABLED = env_bool("MOTION_ENABLED", True)
 MOTION_THRESHOLD = float(os.getenv("MOTION_THRESHOLD", "18"))
 MOTION_COOLDOWN_SECONDS = int(os.getenv("MOTION_COOLDOWN_SECONDS", "5"))
@@ -64,6 +65,7 @@ class CameraAgent:
             "type": CAMERA_TYPE,
             "stream_url": EDGE_STREAM_URL,
             "source": CAMERA_SOURCE,
+            "metadata": {"network": {"iot_segment": IOT_SEGMENT}},
         }
         try:
             requests.post(f"{CORE_API_URL}/api/cameras", json=payload, timeout=3)
@@ -187,6 +189,41 @@ def health():
         "status": agent.status,
         "fps": round(agent.fps, 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/discover")
+def discover(max_index: int = 5):
+    """Discover available local camera indexes on the Edge host."""
+    max_index = max(1, min(max_index, 10))
+    cameras = []
+    for index in range(max_index):
+        capture = cv2.VideoCapture(index)
+        available = capture.isOpened()
+        if available:
+            ok, frame = capture.read()
+            cameras.append(
+                {
+                    "source": str(index),
+                    "available": bool(ok),
+                    "width": int(frame.shape[1]) if ok else None,
+                    "height": int(frame.shape[0]) if ok else None,
+                }
+            )
+        capture.release()
+    return {"cameras": cameras, "max_index": max_index}
+
+
+@app.get("/config")
+def config():
+    return {
+        "camera_id": CAMERA_ID,
+        "camera_name": CAMERA_NAME,
+        "camera_type": CAMERA_TYPE,
+        "camera_source": CAMERA_SOURCE,
+        "core_api_url": CORE_API_URL,
+        "stream_url": EDGE_STREAM_URL,
+        "iot_segment": IOT_SEGMENT,
     }
 
 

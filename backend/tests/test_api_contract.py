@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from app.main import health, root
-from app.schemas import CameraCreate, EventCreate
+from app.schemas import CameraCreate, CameraProvisionRequest, EventCreate
 
 
 class ApiContractTests(unittest.TestCase):
@@ -21,6 +21,18 @@ class ApiContractTests(unittest.TestCase):
         event = EventCreate(camera_id="CAM-001", type="motion")
         self.assertEqual(camera.camera_id, "CAM-001")
         self.assertEqual(event.type, "motion")
+
+    def test_camera_provisioning_payload_keeps_network_target(self):
+        config = CameraProvisionRequest(
+            camera_id="CAM-001",
+            name="Laptop",
+            source="0",
+            edge_host="100.64.0.10",
+            edge_port=8081,
+            iot_segment="iot-cameras",
+        )
+        self.assertEqual(config.edge_host, "100.64.0.10")
+        self.assertEqual(config.iot_segment, "iot-cameras")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,12 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app.config import CAMERA_HEARTBEAT_TIMEOUT_SECONDS
 from app.database import get_collection
 from app.realtime import event_manager
-from app.schemas import CameraCreate, CameraUpdate, HeartbeatRequest
+from app.schemas import (
+    CameraCreate,
+    CameraProvisionRequest,
+    CameraUpdate,
+    HeartbeatRequest,
+)
 
 router = APIRouter(prefix="/api/cameras", tags=["cameras"])
 
@@ -75,6 +80,61 @@ def create_camera(payload: CameraCreate):
     collection.insert_one(camera)
     camera.pop("_id", None)
     return camera
+
+
+@router.post("/configure", status_code=status.HTTP_200_OK)
+def configure_camera(payload: CameraProvisionRequest):
+    """Provision one Edge camera and return the exact agent configuration."""
+    collection = get_collection("cameras")
+    now = now_iso()
+    stream_url = f"http://{payload.edge_host}:{payload.edge_port}/stream"
+    camera = collection.find_one({"id": payload.camera_id})
+
+    document = {
+        "id": payload.camera_id,
+        "name": payload.name,
+        "type": payload.type,
+        "stream_url": stream_url,
+        "source": payload.source,
+        "location": payload.location,
+        "metadata": {
+            "network": {
+                "edge_host": payload.edge_host,
+                "edge_port": payload.edge_port,
+                "core_api_url": payload.core_api_url.rstrip("/"),
+                "iot_segment": payload.iot_segment,
+            }
+        },
+        "enabled": payload.enabled,
+        "status": camera.get("status", "offline") if camera else "offline",
+        "fps": camera.get("fps") if camera else None,
+        "last_heartbeat": camera.get("last_heartbeat") if camera else None,
+        "created_at": camera.get("created_at", now) if camera else now,
+        "updated_at": now,
+    }
+    collection.replace_one({"id": payload.camera_id}, document, upsert=True)
+
+    return {
+        "camera": document,
+        "edge_config": {
+            "CORE_API_URL": payload.core_api_url.rstrip("/"),
+            "CAMERA_ID": payload.camera_id,
+            "CAMERA_NAME": payload.name,
+            "CAMERA_TYPE": payload.type,
+            "CAMERA_SOURCE": payload.source,
+            "EDGE_STREAM_URL": stream_url,
+            "EDGE_PORT": str(payload.edge_port),
+            "IOT_SEGMENT": payload.iot_segment,
+        },
+        "start_command": (
+            ".\\scripts\\start-edge.ps1 "
+            f"-CameraId {payload.camera_id} "
+            f"-CameraName \"{payload.name}\" "
+            f"-CameraType {payload.type} "
+            f"-CameraSource {payload.source} "
+            f"-Port {payload.edge_port}"
+        ),
+    }
 
 
 @router.get("/{camera_id}")

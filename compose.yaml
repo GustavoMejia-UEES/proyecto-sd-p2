@@ -9,6 +9,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     ports:
       - "${MONGO_PORT}:27017"
+    networks:
+      - core_net
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -39,6 +41,9 @@ services:
       CAMERA_HEARTBEAT_TIMEOUT_SECONDS: ${CAMERA_HEARTBEAT_TIMEOUT_SECONDS}
     ports:
       - "${API_PORT}:8000"
+    networks:
+      - core_net
+      - iot_net
     depends_on:
       mongodb:
         condition: service_healthy
@@ -69,14 +74,23 @@ services:
       CAMERA_TYPE: ${CAMERA_TYPE}
       CAMERA_SOURCE: ${CAMERA_SOURCE}
       EDGE_STREAM_URL: ${EDGE_STREAM_URL}
+      IOT_SEGMENT: ${IOT_SEGMENT}
       MOTION_ENABLED: ${MOTION_ENABLED}
       MOTION_THRESHOLD: ${MOTION_THRESHOLD}
       MOTION_COOLDOWN_SECONDS: ${MOTION_COOLDOWN_SECONDS}
     ports:
       - "${EDGE_PORT}:8081"
+    networks:
+      - iot_net
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
   mongodb_data:
+
+networks:
+  core_net:
+    name: argus_core_net
+  iot_net:
+    name: argus_iot_net

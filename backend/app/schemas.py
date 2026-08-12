@@ -41,6 +41,19 @@ class HeartbeatRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class CameraProvisionRequest(BaseModel):
+    camera_id: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=100)
+    type: CameraType = "integrated"
+    source: str = Field(default="0", min_length=1, max_length=500)
+    edge_host: str = Field(default="localhost", min_length=1, max_length=255)
+    edge_port: int = Field(default=8081, ge=1, le=65535)
+    core_api_url: str = Field(default="http://localhost:8000", max_length=500)
+    iot_segment: str = Field(default="iot-cameras", min_length=1, max_length=100)
+    enabled: bool = True
+    location: str | None = Field(default=None, max_length=150)
+
+
 class EventCreate(BaseModel):
     camera_id: str = Field(min_length=1)
     type: EventType
