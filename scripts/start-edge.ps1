@@ -17,6 +17,8 @@ param(
     [double]$DetectionConfidence = 0.45,
     [ValidateSet("motion", "cctv", "activity", "expression")]
     [string]$VisionMode = "motion",
+    [ValidateSet("fast", "balanced", "quality")]
+    [string]$VisionProfile = "balanced",
     [switch]$Vision
 )
 
@@ -57,6 +59,33 @@ $env:DETECTION_MODEL = $DetectionModel
 $env:DETECTION_CONFIDENCE = $DetectionConfidence.ToString(
     [System.Globalization.CultureInfo]::InvariantCulture
 )
+
+if ($Vision) {
+    switch ($VisionProfile) {
+        "fast" {
+            if (-not $PSBoundParameters.ContainsKey("DetectionModel")) {
+                $env:DETECTION_MODEL = "yolo11n.pt"
+            }
+            if (-not $PSBoundParameters.ContainsKey("DetectionInputSize")) {
+                $env:DETECTION_INPUT_SIZE = "416"
+            }
+            if (-not $PSBoundParameters.ContainsKey("DetectionInterval")) {
+                $env:DETECTION_INTERVAL = "4"
+            }
+        }
+        "quality" {
+            if (-not $PSBoundParameters.ContainsKey("DetectionModel")) {
+                $env:DETECTION_MODEL = "yolo11s.pt"
+            }
+            if (-not $PSBoundParameters.ContainsKey("DetectionInputSize")) {
+                $env:DETECTION_INPUT_SIZE = "640"
+            }
+            if (-not $PSBoundParameters.ContainsKey("DetectionInterval")) {
+                $env:DETECTION_INTERVAL = "3"
+            }
+        }
+    }
+}
 $env:VISION_MODE = $VisionMode
 $env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
 if ($Vision -and $VisionMode -eq "motion") {

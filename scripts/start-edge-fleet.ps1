@@ -38,6 +38,7 @@ foreach ($camera in $cameras) {
     $seenPorts[$port] = $true
 
     $visionMode = if ($camera.vision_mode) { [string]$camera.vision_mode } else { "motion" }
+    $visionProfile = if ($camera.vision_profile) { [string]$camera.vision_profile } else { "balanced" }
     $iotSegment = if ($camera.iot_segment) { [string]$camera.iot_segment } else { "iot-cameras" }
     $arguments = @(
         "-NoProfile",
@@ -50,7 +51,8 @@ foreach ($camera in $cameras) {
         "-Port", (Quote-ProcessArgument ([string]$port)),
         "-CoreApiUrl", (Quote-ProcessArgument $CoreApiUrl),
         "-IotSegment", (Quote-ProcessArgument $iotSegment),
-        "-VisionMode", (Quote-ProcessArgument $visionMode)
+        "-VisionMode", (Quote-ProcessArgument $visionMode),
+        "-VisionProfile", (Quote-ProcessArgument $visionProfile)
     )
     if ($visionMode -ne "motion") {
         $arguments += "-Vision"

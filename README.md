@@ -132,6 +132,21 @@ Confirma el registro en:
 Invoke-RestMethod http://localhost:8000/api/cameras | ConvertTo-Json -Depth 8
 ```
 
+## Perfil de visiÃ³n: mÃ¡s calidad
+
+El perfil normal usa `yolo11n.pt`, que es el recomendado para mantener FPS en
+dos cÃ¡maras. Para probar un modelo un poco mÃ¡s preciso, reinicia cada Edge con
+`-VisionProfile quality`:
+
+```powershell
+.\scripts\start-edge.ps1 -CameraId CAM-001 -CameraName "Laptop" -CameraSource 0 -Port 8091 -Vision -VisionMode cctv -VisionProfile quality
+.\scripts\start-edge.ps1 -CameraId CAM-002 -CameraName "USB externa" -CameraSource 1 -Port 8092 -Vision -VisionMode cctv -VisionProfile quality
+```
+
+Este perfil usa `yolo11s.pt`, aumenta el trabajo de inferencia y puede bajar el
+FPS. El stream seguirÃ¡ fluido porque captura e inferencia estÃ¡n separadas.
+Compara `fps`, `detections` y `detection_latency_ms` en cada `/health`.
+
 ## Edge dentro de Compose
 
 Para un stream IP o un host Linux con cámara disponible, también existe el
