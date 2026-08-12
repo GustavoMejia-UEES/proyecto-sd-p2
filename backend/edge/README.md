@@ -104,6 +104,31 @@ a `416`. Si necesitas mÃ¡s detalle y tienes GPU, mantÃ©n `640` y usa
 `-DetectionDevice 0`. El endpoint `/health` permite comparar `fps` contra
 `detection_latency_ms` despuÃ©s de cada ajuste.
 
+## Calidad del detector y entrenamiento propio
+
+`yolo11n.pt` es el perfil recomendado para comenzar en CPU. Cuando el FPS ya
+sea estable, prueba `yolo11s.pt` para ganar calidad visual y compara
+`detections`, `labels` y `detection_latency_ms`. El modelo se puede cambiar
+sin tocar Python:
+
+```powershell
+.\scripts\start-edge.ps1 `
+  -CameraId CAM-001 `
+  -CameraName "Camera Laptop Gustavo" `
+  -CameraSource 0 `
+  -Port 8091 `
+  -Vision `
+  -VisionMode cctv `
+  -DetectionModel yolo11s.pt `
+  -DetectionConfidence 0.40
+```
+
+Para que reconozca objetos especÃ­ficos de ARGUS, el camino correcto es
+recolectar frames reales de tus habitaciones, etiquetar cada clase con cajas,
+separar entrenamiento/validaciÃ³n/prueba y hacer fine-tuning desde un modelo
+preentrenado. No conviene entrenar "emociones" como si fueran objetos: eso
+serÃ¡ un mÃ³dulo posterior de rostro, pose y actividad con validaciÃ³n separada.
+
 ## Edge dentro de Compose
 
 Para una cámara IP, un stream de teléfono o un host Linux con `/dev/video0`,

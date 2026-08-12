@@ -462,6 +462,8 @@ def health():
         "labels": sorted({item["label"] for item in agent.detections}),
         "detection_latency_ms": agent.detection_latency_ms,
         "last_detection_at": agent.last_detection_at,
+        "detection_interval": DETECTION_INTERVAL,
+        "detection_input_size": DETECTION_INPUT_SIZE,
         "capture": {
             "target_width": CAPTURE_WIDTH,
             "target_height": CAPTURE_HEIGHT,
@@ -507,6 +509,8 @@ def config():
         "requested_vision_mode": VISION_MODE,
         "detection_enabled": DETECTION_ENABLED,
         "detection_model": DETECTION_MODEL,
+        "detection_confidence": DETECTION_CONFIDENCE,
+        "detection_interval": DETECTION_INTERVAL,
         "detection_input_size": DETECTION_INPUT_SIZE,
         "detection_device": DETECTION_DEVICE or "auto",
         "capture": {

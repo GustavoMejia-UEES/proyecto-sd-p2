@@ -13,6 +13,8 @@ param(
     [int]$DetectionInterval = 3,
     [int]$DetectionInputSize = 640,
     [string]$DetectionDevice = "",
+    [string]$DetectionModel = "yolo11n.pt",
+    [double]$DetectionConfidence = 0.45,
     [ValidateSet("motion", "cctv", "activity", "expression")]
     [string]$VisionMode = "motion",
     [switch]$Vision
@@ -51,6 +53,8 @@ $env:JPEG_QUALITY = $JpegQuality
 $env:DETECTION_INTERVAL = $DetectionInterval
 $env:DETECTION_INPUT_SIZE = $DetectionInputSize
 $env:DETECTION_DEVICE = $DetectionDevice
+$env:DETECTION_MODEL = $DetectionModel
+$env:DETECTION_CONFIDENCE = $DetectionConfidence
 $env:VISION_MODE = $VisionMode
 $env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
 if ($Vision -and $VisionMode -eq "motion") {
