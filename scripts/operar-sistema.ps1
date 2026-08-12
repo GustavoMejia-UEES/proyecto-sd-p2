@@ -23,20 +23,28 @@ function Show-Status {
 }
 
 function Stop-Edge {
-    $processes = Get-CimInstance Win32_Process |
-        Where-Object {
-            $_.CommandLine -and (
-                $_.CommandLine -match "camera_agent\.py" -or
-                $_.CommandLine -match "start-camera\.ps1" -or
-                $_.CommandLine -match "start-camera-fleet\.ps1"
-            )
-        }
+    # Primero identifica los procesos que realmente poseen los puertos Edge.
+    # Esto evita depender del texto de CommandLine, que cambia entre Python y PowerShell.
+    $ports = @(8091, 8092, 8093, 9010, 9020)
+    $connections = Get-NetTCPConnection -LocalPort $ports -State Listen -ErrorAction SilentlyContinue
+    $processIds = @($connections | Select-Object -ExpandProperty OwningProcess -Unique)
 
-    foreach ($process in $processes) {
-        if ($process.ProcessId -ne $PID) {
-            Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
-            Write-Host "Proceso Edge detenido: $($process.ProcessId)"
-        }
+    # Los lanzadores pueden dejar un proceso padre de PowerShell; se incluye solo
+    # si su línea de comando pertenece a esta flota Edge.
+    $allProcesses = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue
+    $parentIds = @($allProcesses |
+        Where-Object { $processIds -contains $_.ProcessId } |
+        Select-Object -ExpandProperty ParentProcessId -Unique)
+    $parentProcesses = $allProcesses | Where-Object {
+        $parentIds -contains $_.ProcessId -and
+        $_.CommandLine -and
+        ($_.CommandLine -match "camera_agent|start-edge|start-camera")
+    }
+    $processIds += @($parentProcesses | Select-Object -ExpandProperty ProcessId)
+
+    foreach ($processId in ($processIds | Where-Object { $_ -and $_ -ne $PID } | Select-Object -Unique)) {
+        Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+        Write-Host "Proceso Edge detenido: $processId"
     }
 
     Write-Host "Camaras Edge detenidas. No se borraron registros ni configuraciones." -ForegroundColor Green
