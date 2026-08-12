@@ -26,6 +26,14 @@ while ($true) {
         Write-Host ("[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $CameraId) -ForegroundColor Cyan
         Write-Host ("Estado Edge: {0} | API camera: {1} | FPS: {2}" -f $health.status, $camera.status, $health.fps)
         Write-Host ("Detecciones: {0} | Etiquetas: {1} | Latencia: {2} ms" -f $health.detections, ($health.labels -join ", "), $health.detection_latency_ms)
+        if ($health.detection_details) {
+            $health.detection_details | Select-Object label,confidence,track_id,bbox |
+                Format-Table -AutoSize | Out-Host
+        }
+        Write-Host ("Ultimo evento enviado: {0} | ID: {1}" -f $health.last_event_at, $health.last_event_id)
+        if ($health.last_event_error) {
+            Write-Host ("Error enviando evento: {0}" -f $health.last_event_error) -ForegroundColor Red
+        }
 
         Write-Host "`nUltimos eventos:" -ForegroundColor Magenta
         if ($events.Count -eq 0) {

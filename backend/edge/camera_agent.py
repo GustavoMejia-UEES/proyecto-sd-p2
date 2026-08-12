@@ -81,6 +81,9 @@ class CameraAgent:
         self.detection_latency_ms = 0.0
         self.last_detection_at = None
         self.detection_event_times = {}
+        self.last_event_at = None
+        self.last_event_id = None
+        self.last_event_error = None
         self.detection_condition = threading.Condition()
         self.pending_detection_frame = None
         self.detection_worker = None
@@ -179,7 +182,7 @@ class CameraAgent:
 
     def _detection_event(self, detection):
         try:
-            requests.post(
+            response = requests.post(
                 f"{CORE_API_URL}/api/events",
                 json={
                     "camera_id": CAMERA_ID,
@@ -198,8 +201,17 @@ class CameraAgent:
                 },
                 timeout=3,
             )
+            if response.status_code == 201:
+                event = response.json()
+                self.last_event_at = datetime.now(timezone.utc).isoformat()
+                self.last_event_id = event.get("id")
+                self.last_event_error = None
+            else:
+                self.last_event_error = (
+                    f"API returned HTTP {response.status_code}: {response.text[:200]}"
+                )
         except requests.RequestException:
-            pass
+            self.last_event_error = "Could not reach core API"
 
     def _run_detection(self, frame):
         if self.model is None or self.frame_number % DETECTION_INTERVAL:
@@ -461,9 +473,13 @@ def health():
         "detector": DETECTION_MODEL if agent.model else None,
         "detection_error": agent.detection_error,
         "detections": len(agent.detections),
+        "detection_details": agent.detections,
         "labels": sorted({item["label"] for item in agent.detections}),
         "detection_latency_ms": agent.detection_latency_ms,
         "last_detection_at": agent.last_detection_at,
+        "last_event_at": agent.last_event_at,
+        "last_event_id": agent.last_event_id,
+        "last_event_error": agent.last_event_error,
         "detection_interval": DETECTION_INTERVAL,
         "detection_input_size": DETECTION_INPUT_SIZE,
         "capture": {
