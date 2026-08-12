@@ -2,6 +2,14 @@
 
 Este documento es la guía exacta para tomar las capturas de la exposición. La demostración final usa únicamente Kubernetes. Docker Compose queda como herramienta de desarrollo y recuperación local; no debe estar levantado al mismo tiempo que Kubernetes.
 
+> En PowerShell escribe las URLs sin signos `<` ni `>`. Esos signos solo representan marcadores en textos explicativos.
+
+Ejemplo correcto:
+
+```powershell
+Invoke-RestMethod "http://localhost:30080/health"
+```
+
 ## 0. Regla de operación
 
 En la máquina de Gustavo:
@@ -48,6 +56,34 @@ docker-desktop   Ready
 ```
 
 Tomar una captura.
+
+## 2.1 Reactivar el entorno después de apagarlo
+
+Si antes se ejecutó `kubectl scale ... --replicas=0`, los Services seguirán visibles, pero `kubectl get pods` mostrará `No resources found`. Reactiva los Deployments así:
+
+```powershell
+kubectl scale deployment mongodb --replicas=1
+kubectl scale deployment argus-api --replicas=4
+kubectl rollout status deployment/mongodb --timeout=180s
+kubectl rollout status deployment/argus-api --timeout=180s
+```
+
+Comprueba que todos estén listos:
+
+```powershell
+kubectl get pods -o wide
+```
+
+No tomes capturas mientras aparezca `ContainerCreating`, `CrashLoopBackOff` o `0/1`.
+
+Si los Deployments no existen porque se reinició el clúster, ejecuta desde la raíz del proyecto:
+
+```powershell
+cd "C:\Users\ASUS\Documents\Estudios\UEES\Semestres\7MO SEMESTRE O1 26\Sistemas Distribuidos\proyecto2p"
+kubectl apply -f k8s/mongodb.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl scale deployment argus-api --replicas=4
+```
 
 ## 3. Captura: pods y servicios
 
@@ -187,4 +223,3 @@ Importante: la webcam USB/integrada no debe ejecutarse dentro del pod Linux de K
 7. Mostrar el stream remoto.
 8. Mostrar el frontend con tareas CRUD y eventos de cámara.
 9. Mostrar `kubectl describe deployment` para cerrar la evidencia técnica.
-
