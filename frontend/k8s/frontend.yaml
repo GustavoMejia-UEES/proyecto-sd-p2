@@ -3,8 +3,9 @@ kind: ConfigMap
 metadata:
   name: argus-frontend-config
 data:
-  # Replace 100.x.x.x with the Tailscale IPv4 address of Machine A.
-  API_URL: "http://100.x.x.x:30080"
+  # Tailscale IPv4 of Gustavo's Machine A and NodePort of the backend.
+  NEXT_PUBLIC_API_URL: "http://100.77.143.36:30080"
+  API_URL: "http://100.77.143.36:30080"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -24,13 +25,18 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: sistema-frontend:0.1.0
+          image: sistema-frontend:0.4.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           envFrom:
             - configMapRef:
                 name: argus-frontend-config
+          env:
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: "3000"
           readinessProbe:
             httpGet:
               path: /

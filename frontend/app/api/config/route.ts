@@ -4,6 +4,6 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    apiUrl: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "http://localhost:8000",
   });
 }
