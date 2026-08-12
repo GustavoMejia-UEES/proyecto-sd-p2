@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argus-api-config
+data:
+  APP_NAME: ARGUS Core API
+  APP_ENV: kubernetes
+  MONGO_HOST: mongodb
+  MONGO_PORT: "27017"
+  MONGO_DB: argus
+  API_CORS_ORIGINS: "*"
+  CAMERA_TASK_COOLDOWN_SECONDS: "60"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argus-api-secret
+type: Opaque
+stringData:
+  MONGO_USER: argus_admin
+  MONGO_PASSWORD: argus_password
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argus-api
+  labels:
+    app: argus-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: argus-api
+  template:
+    metadata:
+      labels:
+        app: argus-api
+    spec:
+      containers:
+        - name: argus-api
+          image: argus-api:0.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: argus-api-config
+            - secretRef:
+                name: argus-api-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argus-api
+spec:
+  selector:
+    app: argus-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      nodePort: 30080
+  type: NodePort

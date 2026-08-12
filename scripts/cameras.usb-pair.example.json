@@ -1,0 +1,24 @@
+[
+  {
+    "camera_id": "CAM-001",
+    "name": "Camera Laptop Gustavo",
+    "type": "integrated",
+    "source": "0",
+    "port": 8091,
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "vision_profile": "balanced",
+    "enabled": true
+  },
+  {
+    "camera_id": "CAM-002",
+    "name": "Camera USB Gustavo",
+    "type": "usb",
+    "source": "1",
+    "port": 8092,
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "vision_profile": "balanced",
+    "enabled": true
+  }
+]

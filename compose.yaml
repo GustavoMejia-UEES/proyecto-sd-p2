@@ -1,0 +1,109 @@
+name: argus
+
+services:
+  mongodb:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT}:27017"
+    networks:
+      - core_net
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: argus-api:local
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME}
+      APP_ENV: ${APP_ENV}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+      MONGO_HOST: mongodb
+      MONGO_PORT: "27017"
+      MONGO_DB: ${MONGO_DATABASE}
+      MONGO_USER: ${MONGO_ROOT_USERNAME}
+      MONGO_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      CAMERA_HEARTBEAT_TIMEOUT_SECONDS: ${CAMERA_HEARTBEAT_TIMEOUT_SECONDS}
+      CAMERA_TASK_COOLDOWN_SECONDS: ${CAMERA_TASK_COOLDOWN_SECONDS:-60}
+    ports:
+      - "${API_PORT}:8000"
+    networks:
+      - core_net
+      - iot_net
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  edge:
+    profiles: ["edge"]
+    build:
+      context: ./backend/edge
+      dockerfile: Dockerfile
+    image: argus-edge:local
+    restart: unless-stopped
+    environment:
+      CORE_API_URL: http://api:8000
+      CAMERA_ID: ${CAMERA_ID}
+      CAMERA_NAME: ${CAMERA_NAME}
+      CAMERA_TYPE: ${CAMERA_TYPE}
+      CAMERA_SOURCE: ${CAMERA_SOURCE}
+      EDGE_STREAM_URL: ${EDGE_STREAM_URL}
+      IOT_SEGMENT: ${IOT_SEGMENT}
+      MOTION_ENABLED: ${MOTION_ENABLED}
+      MOTION_THRESHOLD: ${MOTION_THRESHOLD}
+      MOTION_COOLDOWN_SECONDS: ${MOTION_COOLDOWN_SECONDS}
+      CAPTURE_WIDTH: ${CAPTURE_WIDTH:-1280}
+      CAPTURE_HEIGHT: ${CAPTURE_HEIGHT:-720}
+      CAPTURE_FPS: ${CAPTURE_FPS:-30}
+      CAPTURE_BUFFER_SIZE: ${CAPTURE_BUFFER_SIZE:-1}
+      JPEG_QUALITY: ${JPEG_QUALITY:-82}
+      DETECTION_ENABLED: ${DETECTION_ENABLED:-false}
+      VISION_MODE: ${VISION_MODE:-motion}
+      DETECTION_MODEL: ${DETECTION_MODEL:-yolo11n.pt}
+      DETECTION_INTERVAL: ${DETECTION_INTERVAL:-3}
+      DETECTION_INPUT_SIZE: ${DETECTION_INPUT_SIZE:-640}
+      DETECTION_DEVICE: ${DETECTION_DEVICE:-}
+      DETECTION_CONFIDENCE: ${DETECTION_CONFIDENCE:-0.45}
+    ports:
+      - "${EDGE_PORT}:8081"
+    networks:
+      - iot_net
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
+
+networks:
+  core_net:
+    name: argus_core_net
+  iot_net:
+    name: argus_iot_net
