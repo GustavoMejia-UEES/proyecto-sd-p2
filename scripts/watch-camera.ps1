@@ -17,8 +17,19 @@ while ($true) {
     try {
         $health = Invoke-RestMethod "$EdgeUrl/health" -TimeoutSec 5
         $camera = Invoke-RestMethod "$CoreApiUrl/api/cameras/$CameraId" -TimeoutSec 5
-        $events = @(Invoke-RestMethod "$CoreApiUrl/api/events?camera_id=$CameraId&limit=5" -TimeoutSec 5)
-        $tasks = @(Invoke-RestMethod "$CoreApiUrl/api/tasks" -TimeoutSec 5 |
+        $eventResponse = Invoke-RestMethod "$CoreApiUrl/api/events?camera_id=$CameraId&limit=5" -TimeoutSec 5
+        $events = if ($null -ne $eventResponse.value) {
+            @($eventResponse.value)
+        } else {
+            @($eventResponse)
+        }
+        $taskResponse = Invoke-RestMethod "$CoreApiUrl/api/tasks" -TimeoutSec 5
+        $allTasks = if ($null -ne $taskResponse.value) {
+            @($taskResponse.value)
+        } else {
+            @($taskResponse)
+        }
+        $tasks = @($allTasks |
             Where-Object { $_.camera_id -eq $CameraId } |
             Select-Object -First 5)
 
