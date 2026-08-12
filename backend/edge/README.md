@@ -115,3 +115,22 @@ docker compose --profile edge up -d --build edge
 
 En Windows, `CAMERA_SOURCE=0` dentro del contenedor no representa la webcam de
 la laptop. Para la webcam integrada usa el modo local anterior.
+
+## Varias cÃ¡maras y dispositivos
+
+Cada dispositivo fÃ­sico o stream IP se ejecuta como un proceso Edge separado.
+Lo que los conecta es el mismo `CORE_API_URL`; lo que los diferencia es
+`CAMERA_ID`, `CAMERA_SOURCE` y un puerto de stream Ãºnico.
+
+Para lanzar varias cÃ¡maras en Windows:
+
+```powershell
+Copy-Item .\scripts\cameras.example.json .\scripts\cameras.local.json
+# Edita cameras.local.json y activa las cÃ¡maras deseadas.
+.\scripts\start-edge-fleet.ps1
+```
+
+La webcam integrada puede usar `source: "0"`; un telÃ©fono o cÃ¡mara IP debe
+usar una URL MJPEG/RTSP y un `port` distinto, por ejemplo `8092`. Para que el
+frontend acceda desde otra mÃ¡quina, reemplaza `localhost` por la IP LAN del
+host Edge en la configuraciÃ³n de la cÃ¡mara.

@@ -1,0 +1,22 @@
+[
+  {
+    "camera_id": "CAM-001",
+    "name": "Camera Laptop Gustavo",
+    "type": "integrated",
+    "source": "0",
+    "port": 8091,
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "enabled": true
+  },
+  {
+    "camera_id": "CAM-002",
+    "name": "Camera IP Laboratorio",
+    "type": "rtsp",
+    "source": "rtsp://usuario:password@192.168.50.20:554/stream",
+    "port": 8092,
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "enabled": false
+  }
+]
