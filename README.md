@@ -76,6 +76,36 @@ ni ejecuta comandos remotos.
 
 ## Varias cámaras
 
+### Convención de puertos y Tailscale
+
+Usa un puerto Edge único por cámara en el host que realmente captura el video:
+
+```text
+8091  CAM-001  laptop integrada
+8092  CAM-002  webcam USB
+8093  CAM-003  teléfono RTSP
+8094  CAM-004  futura cámara IP
+```
+
+El backend usa `8000` en local o NodePort `30080` en Kubernetes. Si el
+frontend está en otra máquina, configura `edge_host` con la IP Tailscale del
+host Edge, nunca con `localhost`.
+
+Para preparar las fuentes, copia el ejemplo y reemplaza las IP `100.x.x.x` por
+las IP actuales de tu tailnet:
+
+```powershell
+Copy-Item .\scripts\cameras.tailscale.example.json .\scripts\cameras.local.json
+.\scripts\start-edge-fleet.ps1 -CoreApiUrl http://localhost:8000
+```
+
+El teléfono está deshabilitado por defecto hasta confirmar su URL RTSP. Al
+activarlo, el Edge registrará automáticamente:
+
+```text
+http://IP_TAILSCALE_DEL_EDGE:8093/stream
+```
+
 Cada cámara necesita su propio proceso, identificador y puerto:
 
 ```powershell

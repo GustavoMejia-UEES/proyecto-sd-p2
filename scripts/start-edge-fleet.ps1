@@ -40,6 +40,7 @@ foreach ($camera in $cameras) {
     $visionMode = if ($camera.vision_mode) { [string]$camera.vision_mode } else { "motion" }
     $visionProfile = if ($camera.vision_profile) { [string]$camera.vision_profile } else { "balanced" }
     $iotSegment = if ($camera.iot_segment) { [string]$camera.iot_segment } else { "iot-cameras" }
+    $edgeHost = if ($camera.edge_host) { [string]$camera.edge_host } else { "localhost" }
     $arguments = @(
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
@@ -49,6 +50,7 @@ foreach ($camera in $cameras) {
         "-CameraType", (Quote-ProcessArgument ([string]$camera.type)),
         "-CameraSource", (Quote-ProcessArgument ([string]$camera.source)),
         "-Port", (Quote-ProcessArgument ([string]$port)),
+        "-EdgeHost", (Quote-ProcessArgument $edgeHost),
         "-CoreApiUrl", (Quote-ProcessArgument $CoreApiUrl),
         "-IotSegment", (Quote-ProcessArgument $iotSegment),
         "-VisionMode", (Quote-ProcessArgument $visionMode),
@@ -68,6 +70,7 @@ foreach ($camera in $cameras) {
         Port = $port
         ProcessId = $process.Id
         Stream = "http://localhost:$port/stream"
+        PublicStream = "http://$edgeHost`:$port/stream"
     }
 }
 
