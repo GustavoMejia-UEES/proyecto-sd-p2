@@ -29,7 +29,7 @@ El estado real se consulta con `GET /api/cameras`. `enabled` representa el estad
 |---|---|---|---|
 | CAM-001 | Gustavo | Laptop, source `0` | `http://100.77.143.36:8091/stream` |
 | CAM-002 | Gustavo | USB, source `1` | `http://100.77.143.36:8092/stream` |
-| CAM-003 | Gustavo | Celular IP Webcam | `http://100.77.143.36:8093/stream` |
+| CAM-003 | Gustavo | Celular IP Webcam | `http://100.77.143.36:9020/stream` |
 | CAM-004 | Juanfer | Laptop, source `0` | `http://100.112.215.44:8091/stream` |
 | CAM-005 | Juanfer | Celular IP Webcam | `http://100.112.215.44:9010/stream` |
 

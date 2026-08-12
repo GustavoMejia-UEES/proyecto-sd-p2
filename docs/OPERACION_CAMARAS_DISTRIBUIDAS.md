@@ -10,7 +10,7 @@ Desde la raíz del proyecto y con Kubernetes activo:
 .\scripts\start-camera-fleet.ps1 -Owner gustavo -Kubernetes
 ```
 
-Inicia `CAM-001` (laptop, source `0`, puerto `8091`), `CAM-002` (USB, source `1`, puerto `8092`) y `CAM-003` (celular, puerto `8093`).
+Inicia `CAM-001` (laptop, source `0`, puerto `8091`), `CAM-002` (USB, source `1`, puerto `8092`) y `CAM-003` (celular, puerto `9020`).
 
 ## Juanfer
 

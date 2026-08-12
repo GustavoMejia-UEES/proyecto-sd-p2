@@ -28,8 +28,8 @@ $profiles = @{
     "CAM-003" = @{
         Name = "Celular IP Webcam"
         Type = "phone"
-        Source = "http://100.96.186.21:8030/video"
-        Port = 8093
+        Source = "http://100.106.180.86:9881/video"
+        Port = 9020
         Host = "100.77.143.36"
     }
     "CAM-004" = @{
