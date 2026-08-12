@@ -134,7 +134,9 @@ def configure_camera(payload: CameraProvisionRequest):
             f"-CameraName \"{payload.name}\" "
             f"-CameraType {payload.type} "
             f"-CameraSource {payload.source} "
-            f"-Port {payload.edge_port}"
+            f"-Port {payload.edge_port} "
+            + ("-Vision " if payload.vision_mode != "motion" else "")
+            + f"-VisionMode {payload.vision_mode}"
         ),
     }
 

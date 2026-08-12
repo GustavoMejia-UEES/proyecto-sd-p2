@@ -28,9 +28,15 @@ MOTION_THRESHOLD = float(os.getenv("MOTION_THRESHOLD", "18"))
 MOTION_COOLDOWN_SECONDS = int(os.getenv("MOTION_COOLDOWN_SECONDS", "5"))
 VISION_MODE = os.getenv("VISION_MODE", "motion").lower()
 DETECTION_ENABLED = env_bool("DETECTION_ENABLED", VISION_MODE == "cctv")
+EFFECTIVE_VISION_MODE = (
+    "cctv" if DETECTION_ENABLED and VISION_MODE == "motion" else VISION_MODE
+)
 DETECTION_INTERVAL = max(1, int(os.getenv("DETECTION_INTERVAL", "3")))
 DETECTION_CONFIDENCE = float(os.getenv("DETECTION_CONFIDENCE", "0.45"))
 DETECTION_MODEL = os.getenv("DETECTION_MODEL", "yolo11n.pt")
+DETECTION_EVENT_COOLDOWN_SECONDS = float(
+    os.getenv("DETECTION_EVENT_COOLDOWN_SECONDS", "8")
+)
 DETECTION_CLASSES = {
     int(value.strip())
     for value in os.getenv("DETECTION_CLASSES", "").split(",")
@@ -63,6 +69,9 @@ class CameraAgent:
         self.detection_lock = threading.Lock()
         self.detection_error = None
         self.frame_number = 0
+        self.detection_latency_ms = 0.0
+        self.last_detection_at = None
+        self.detection_event_times = {}
 
     def start(self):
         if self.running:
@@ -87,7 +96,7 @@ class CameraAgent:
             "stream_url": EDGE_STREAM_URL,
             "source": CAMERA_SOURCE,
             "metadata": {"network": {"iot_segment": IOT_SEGMENT}},
-            "vision_mode": VISION_MODE,
+            "vision_mode": EFFECTIVE_VISION_MODE,
         }
         try:
             response = requests.post(
@@ -101,7 +110,7 @@ class CameraAgent:
                         "type": CAMERA_TYPE,
                         "stream_url": EDGE_STREAM_URL,
                         "source": CAMERA_SOURCE,
-                        "vision_mode": VISION_MODE,
+                        "vision_mode": EFFECTIVE_VISION_MODE,
                         "metadata": {
                             "network": {"iot_segment": IOT_SEGMENT}
                         },
@@ -164,7 +173,7 @@ class CameraAgent:
                         "source": "ultralytics",
                         "track_id": detection["track_id"],
                         "bbox": detection["bbox"],
-                        "vision_mode": VISION_MODE,
+                        "vision_mode": EFFECTIVE_VISION_MODE,
                     },
                 },
                 timeout=3,
@@ -175,6 +184,7 @@ class CameraAgent:
     def _run_detection(self, frame):
         if self.model is None or self.frame_number % DETECTION_INTERVAL:
             return
+        started = time.perf_counter()
         try:
             results = self.model.track(
                 frame,
@@ -209,9 +219,21 @@ class CameraAgent:
                     (item["label"], item["track_id"]) for item in self.detections
                 }
                 self.detections = current
+                self.detection_latency_ms = round(
+                    (time.perf_counter() - started) * 1000, 2
+                )
+                self.last_detection_at = (
+                    datetime.now(timezone.utc).isoformat() if current else None
+                )
             for detection in current:
                 key = (detection["label"], detection["track_id"])
-                if key not in previous_keys:
+                now = time.monotonic()
+                last_event = self.detection_event_times.get(key, 0.0)
+                if (
+                    key not in previous_keys
+                    or now - last_event >= DETECTION_EVENT_COOLDOWN_SECONDS
+                ):
+                    self.detection_event_times[key] = now
                     threading.Thread(
                         target=self._detection_event,
                         args=(detection,),
@@ -219,6 +241,36 @@ class CameraAgent:
                     ).start()
         except Exception as exc:
             self.detection_error = str(exc)
+            self.detection_latency_ms = round(
+                (time.perf_counter() - started) * 1000, 2
+            )
+
+    def _draw_hud(self, frame):
+        with self.detection_lock:
+            detection_count = len(self.detections)
+        lines = [
+            f"ARGUS // {CAMERA_ID}",
+            f"MODE {EFFECTIVE_VISION_MODE.upper()}  |  FPS {self.fps:.1f}",
+            f"TRACKED OBJECTS {detection_count}",
+        ]
+        if self.detection_latency_ms:
+            lines.append(f"INFERENCE {self.detection_latency_ms:.0f}ms")
+        overlay = frame.copy()
+        height = 28 + (len(lines) * 23)
+        cv2.rectangle(overlay, (0, 0), (280, height), (8, 14, 24), -1)
+        cv2.addWeighted(overlay, 0.82, frame, 0.18, 0, frame)
+        for index, line in enumerate(lines):
+            color = (0, 220, 255) if index == 0 else (235, 240, 245)
+            cv2.putText(
+                frame,
+                line,
+                (12, 25 + index * 23),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.52 if index else 0.62,
+                color,
+                1 if index else 2,
+                cv2.LINE_AA,
+            )
 
     def _draw_detections(self, frame):
         with self.detection_lock:
@@ -289,6 +341,7 @@ class CameraAgent:
 
             self._run_detection(frame)
             self._draw_detections(frame)
+            self._draw_hud(frame)
 
             ok, encoded = cv2.imencode(".jpg", frame)
             if ok:
@@ -347,11 +400,15 @@ def health():
         "status": agent.status,
         "fps": round(agent.fps, 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "vision_mode": VISION_MODE,
+        "vision_mode": EFFECTIVE_VISION_MODE,
+        "requested_vision_mode": VISION_MODE,
         "detection_enabled": DETECTION_ENABLED,
         "detector": DETECTION_MODEL if agent.model else None,
         "detection_error": agent.detection_error,
         "detections": len(agent.detections),
+        "labels": sorted({item["label"] for item in agent.detections}),
+        "detection_latency_ms": agent.detection_latency_ms,
+        "last_detection_at": agent.last_detection_at,
     }
 
 
@@ -387,7 +444,8 @@ def config():
         "core_api_url": CORE_API_URL,
         "stream_url": EDGE_STREAM_URL,
         "iot_segment": IOT_SEGMENT,
-        "vision_mode": VISION_MODE,
+        "vision_mode": EFFECTIVE_VISION_MODE,
+        "requested_vision_mode": VISION_MODE,
         "detection_enabled": DETECTION_ENABLED,
         "detection_model": DETECTION_MODEL,
     }

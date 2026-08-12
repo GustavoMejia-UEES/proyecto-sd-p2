@@ -65,6 +65,15 @@ stream mostrará cajas con etiqueta, confianza e ID de tracking. Los eventos
 `object_detected` se enviarán al API con `label`, `confidence`, `track_id` y
 `bbox` dentro de `metadata`.
 
+El endpoint `http://localhost:8091/health` expone el estado operativo del
+detector: modo efectivo, etiquetas visibles, cantidad de objetos, latencia de
+inferencia, Ãºltimo instante de detecciÃ³n y cualquier error del modelo. El
+stream tambiÃ©n incluye un HUD de ARGUS con FPS, modo y objetos rastreados.
+
+Al usar `-Vision`, el script selecciona automÃ¡ticamente el modo efectivo
+`cctv` aunque no se especifique `-VisionMode cctv`. Para cambiar de perfil,
+puedes usar `-VisionMode motion`, `cctv`, `activity` o `expression`.
+
 Si no instalas el extra `-Vision`, el sistema continúa usando únicamente
 OpenCV/motion detection.
 

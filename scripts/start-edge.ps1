@@ -39,6 +39,9 @@ $env:EDGE_STREAM_URL = "http://localhost:$Port/stream"
 $env:IOT_SEGMENT = $IotSegment
 $env:VISION_MODE = $VisionMode
 $env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
+if ($Vision -and $VisionMode -eq "motion") {
+    $env:VISION_MODE = "cctv"
+}
 
 Write-Host "Iniciando $CameraId en $env:EDGE_STREAM_URL usando source $CameraSource"
 Push-Location $edgePath
