@@ -23,15 +23,12 @@ while ($true) {
         } else {
             @($eventResponse)
         }
-        $taskResponse = Invoke-RestMethod "$CoreApiUrl/api/tasks" -TimeoutSec 5
-        $allTasks = if ($null -ne $taskResponse.value) {
+        $taskResponse = Invoke-RestMethod "$CoreApiUrl/api/tasks?source=camera&camera_id=$CameraId&limit=5" -TimeoutSec 5
+        $tasks = if ($null -ne $taskResponse.value) {
             @($taskResponse.value)
         } else {
             @($taskResponse)
         }
-        $tasks = @($allTasks |
-            Where-Object { $_.camera_id -eq $CameraId } |
-            Select-Object -First 5)
 
         Clear-Host
         Write-Host ("[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $CameraId) -ForegroundColor Cyan
@@ -58,7 +55,7 @@ while ($true) {
         if ($tasks.Count -eq 0) {
             Write-Host "  Sin tareas automáticas para esta cámara."
         } else {
-            $tasks | Select-Object id,titulo,estado,priority,event_id,created_at |
+            $tasks | Select-Object id,titulo,estado,priority,occurrences,last_event_id,last_seen_at |
                 Format-Table -AutoSize | Out-Host
         }
     } catch {

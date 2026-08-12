@@ -49,7 +49,13 @@ La API conserva el contrato solicitado por la asignaciÃ³n:
 ```
 
 Estados admitidos: `Pendiente`, `En progreso` y `Completada`. La respuesta
-incluye `id`, `created_at` y `updated_at`.
+incluye `id`, `created_at` y `updated_at`. Las tareas de vigilancia también
+pueden incluir `source`, `camera_id`, `event_id`, `event_type` y `priority`.
+
+Las alertas de cámara se agrupan por cámara, tipo y objeto. Mientras una alerta
+permanece pendiente, nuevos eventos actualizan `occurrences`, `last_event_id`
+y `last_seen_at` en la misma tarea. Al marcarla como `Completada`, una nueva
+aparición puede generar otra tarea.
 
 Ejemplo de cámara:
 

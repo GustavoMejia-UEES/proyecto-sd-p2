@@ -56,11 +56,15 @@ async def create_event(payload: EventCreate):
     }
     get_collection("events").insert_one(event)
     event.pop("_id", None)
-    generated_task = create_task_from_event(event)
+    task_result = create_task_from_event(event)
     await event_manager.broadcast({"type": "event_created", "event": event})
-    if generated_task:
+    if task_result:
+        generated_task, created = task_result
         await event_manager.broadcast(
-            {"type": "task_created", "task": generated_task}
+            {
+                "type": "task_created" if created else "task_updated",
+                "task": generated_task,
+            }
         )
         event["generated_task"] = generated_task
     return event

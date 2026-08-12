@@ -46,6 +46,11 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(task.camera_id, "CAM-001")
         self.assertEqual(task.priority, "high")
 
+    def test_camera_task_alert_fields_are_optional_for_manual_tasks(self):
+        task = TaskCreate(titulo="Tarea manual")
+        self.assertEqual(task.source, "manual")
+        self.assertEqual(task.priority, "medium")
+
     def test_camera_provisioning_payload_keeps_network_target(self):
         config = CameraProvisionRequest(
             camera_id="CAM-001",
