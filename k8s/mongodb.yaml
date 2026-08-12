@@ -37,6 +37,8 @@ metadata:
   name: mongodb
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mongodb
@@ -60,8 +62,10 @@ spec:
                 - --quiet
                 - --eval
                 - "db.adminCommand('ping').ok"
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           volumeMounts:
             - name: mongodb-data
               mountPath: /data/db

@@ -81,9 +81,14 @@ class CameraAgent:
         self.detection_latency_ms = 0.0
         self.last_detection_at = None
         self.detection_event_times = {}
+        self.last_event_at = None
+        self.last_event_id = None
+        self.last_event_error = None
         self.detection_condition = threading.Condition()
         self.pending_detection_frame = None
         self.detection_worker = None
+        self.enabled = True
+        self.last_control_poll = 0.0
 
     def start(self):
         if self.running:
@@ -162,6 +167,23 @@ class CameraAgent:
         except requests.RequestException:
             pass
 
+    def _poll_control(self):
+        """Read the desired state set by the frontend."""
+        try:
+            response = requests.get(
+                f"{CORE_API_URL}/api/cameras/{CAMERA_ID}", timeout=3
+            )
+            if response.ok:
+                desired = response.json().get("enabled", True)
+                if desired != self.enabled:
+                    self.enabled = desired
+                    if not desired and self.capture is not None:
+                        self.capture.release()
+                        self.capture = None
+                        self.last_frame = None
+        except requests.RequestException:
+            pass
+
     def _motion_event(self):
         try:
             requests.post(
@@ -179,7 +201,7 @@ class CameraAgent:
 
     def _detection_event(self, detection):
         try:
-            requests.post(
+            response = requests.post(
                 f"{CORE_API_URL}/api/events",
                 json={
                     "camera_id": CAMERA_ID,
@@ -198,8 +220,17 @@ class CameraAgent:
                 },
                 timeout=3,
             )
+            if response.status_code == 201:
+                event = response.json()
+                self.last_event_at = datetime.now(timezone.utc).isoformat()
+                self.last_event_id = event.get("id")
+                self.last_event_error = None
+            else:
+                self.last_event_error = (
+                    f"API returned HTTP {response.status_code}: {response.text[:200]}"
+                )
         except requests.RequestException:
-            pass
+            self.last_event_error = "Could not reach core API"
 
     def _run_detection(self, frame):
         if self.model is None or self.frame_number % DETECTION_INTERVAL:
@@ -349,6 +380,16 @@ class CameraAgent:
         fps_started = time.monotonic()
 
         while self.running:
+            if time.monotonic() - self.last_control_poll >= 5:
+                self._poll_control()
+                self.last_control_poll = time.monotonic()
+
+            if not self.enabled:
+                self.status = "offline"
+                self._heartbeat()
+                time.sleep(2)
+                continue
+
             if self.capture is None or not self.capture.isOpened():
                 self.status = "degraded"
                 self.capture = cv2.VideoCapture(camera_source())
@@ -461,9 +502,13 @@ def health():
         "detector": DETECTION_MODEL if agent.model else None,
         "detection_error": agent.detection_error,
         "detections": len(agent.detections),
+        "detection_details": agent.detections,
         "labels": sorted({item["label"] for item in agent.detections}),
         "detection_latency_ms": agent.detection_latency_ms,
         "last_detection_at": agent.last_detection_at,
+        "last_event_at": agent.last_event_at,
+        "last_event_id": agent.last_event_id,
+        "last_event_error": agent.last_event_error,
         "detection_interval": DETECTION_INTERVAL,
         "detection_input_size": DETECTION_INPUT_SIZE,
         "capture": {

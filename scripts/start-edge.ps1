@@ -4,6 +4,7 @@ param(
     [string]$CameraType = "integrated",
     [string]$CameraSource = "0",
     [int]$Port = 8081,
+    [string]$EdgeHost = "localhost",
     [string]$CoreApiUrl = "http://localhost:8000",
     [string]$IotSegment = "iot-cameras",
     [int]$CaptureWidth = 1280,
@@ -46,7 +47,7 @@ $env:CAMERA_ID = $CameraId
 $env:CAMERA_NAME = $CameraName
 $env:CAMERA_TYPE = $CameraType
 $env:CAMERA_SOURCE = $CameraSource
-$env:EDGE_STREAM_URL = "http://localhost:$Port/stream"
+$env:EDGE_STREAM_URL = "http://$EdgeHost`:$Port/stream"
 $env:IOT_SEGMENT = $IotSegment
 $env:CAPTURE_WIDTH = $CaptureWidth
 $env:CAPTURE_HEIGHT = $CaptureHeight

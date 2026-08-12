@@ -1,0 +1,38 @@
+[
+  {
+    "camera_id": "CAM-001",
+    "name": "Camara laptop Gustavo",
+    "type": "integrated",
+    "source": "0",
+    "port": 8091,
+    "edge_host": "100.77.143.36",
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "vision_profile": "balanced",
+    "enabled": true
+  },
+  {
+    "camera_id": "CAM-002",
+    "name": "Camara USB Gustavo",
+    "type": "usb",
+    "source": "1",
+    "port": 8092,
+    "edge_host": "100.77.143.36",
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "vision_profile": "balanced",
+    "enabled": true
+  },
+  {
+    "camera_id": "CAM-003",
+    "name": "Telefono RTSP Gustavo",
+    "type": "phone",
+    "source": "rtsp://100.106.180.86:8554/live",
+    "port": 8093,
+    "edge_host": "100.77.143.36",
+    "iot_segment": "iot-cameras",
+    "vision_mode": "cctv",
+    "vision_profile": "fast",
+    "enabled": false
+  }
+]

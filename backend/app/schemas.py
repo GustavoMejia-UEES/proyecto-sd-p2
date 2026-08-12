@@ -46,6 +46,7 @@ class CameraCreate(BaseModel):
     location: str | None = Field(default=None, max_length=150)
     vision_mode: VisionMode = "motion"
     metadata: dict[str, Any] = Field(default_factory=dict)
+    enabled: bool = True
 
 
 class CameraUpdate(BaseModel):
@@ -56,6 +57,11 @@ class CameraUpdate(BaseModel):
     location: str | None = Field(default=None, max_length=150)
     vision_mode: VisionMode | None = None
     metadata: dict[str, Any] | None = None
+    enabled: bool | None = None
+
+
+class CameraControlRequest(BaseModel):
+    enabled: bool
 
 
 class HeartbeatRequest(BaseModel):

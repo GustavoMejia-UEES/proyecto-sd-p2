@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.config import CAMERA_TASK_COOLDOWN_SECONDS
 from app.database import get_collection
 from app.schemas import EventType, TaskCreate, TaskPriority, TaskUpdate
 
@@ -27,25 +26,30 @@ def _task_priority(event_type: EventType) -> TaskPriority:
     return "low"
 
 
-def create_task_from_event(event: dict) -> dict | None:
-    """Create one operational task per camera/event type during the cooldown."""
+def create_task_from_event(event: dict) -> tuple[dict, bool] | None:
+    """Keep one active alert per camera/object and preserve its occurrences."""
     event_type = event["type"]
-    cutoff = (
-        datetime.now(timezone.utc)
-        - timedelta(seconds=CAMERA_TASK_COOLDOWN_SECONDS)
-    ).isoformat()
+    object_name = event.get("object_name") or "general"
+    alert_key = f"{event['camera_id']}:{event_type}:{object_name}"
     collection = get_collection("tasks")
     duplicate = collection.find_one(
         {
             "source": "camera",
-            "camera_id": event["camera_id"],
-            "event_type": event_type,
-            "created_at": {"$gte": cutoff},
+            "alert_key": alert_key,
             "estado": {"$ne": "Completada"},
         }
     )
     if duplicate:
-        return None
+        now = now_iso()
+        update = {
+            "last_event_id": event["id"],
+            "last_seen_at": now,
+            "occurrences": duplicate.get("occurrences", 1) + 1,
+            "updated_at": now,
+        }
+        collection.update_one({"id": duplicate["id"]}, {"$set": update})
+        duplicate.update(update)
+        return _serialize(duplicate), False
 
     now = now_iso()
     description = event.get("description") or f"Evento {event_type} detectado"
@@ -57,18 +61,37 @@ def create_task_from_event(event: dict) -> dict | None:
         "camera_id": event["camera_id"],
         "event_id": event["id"],
         "event_type": event_type,
+        "alert_key": alert_key,
+        "occurrences": 1,
+        "last_event_id": event["id"],
+        "last_seen_at": now,
         "priority": _task_priority(event_type),
         "created_at": now,
         "updated_at": now,
     }
     collection.insert_one(task)
-    return _serialize(task)
+    return _serialize(task), True
 
 
 @router.get("")
-def list_tasks(task_status: str | None = Query(default=None, alias="estado")):
-    query = {"estado": task_status} if task_status else {}
-    tasks = list(get_collection("tasks").find(query).sort("created_at", -1))
+def list_tasks(
+    task_status: str | None = Query(default=None, alias="estado"),
+    source: str | None = None,
+    camera_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    query = {
+        key: value
+        for key, value in {
+            "estado": task_status,
+            "source": source,
+            "camera_id": camera_id,
+        }.items()
+        if value is not None
+    }
+    tasks = list(
+        get_collection("tasks").find(query).sort("updated_at", -1).limit(limit)
+    )
     return [_serialize(task) for task in tasks]
 
 
