@@ -53,7 +53,11 @@ $expectedOwner = if ($CameraId -in @("CAM-001", "CAM-002", "CAM-003")) { "gustav
 if ($Owner -ne $expectedOwner) {
     throw "$CameraId pertenece al equipo de $expectedOwner. Usa -Owner $expectedOwner."
 }
-$apiUrl = if ($Kubernetes) { "http://localhost:30080" } else { "http://localhost:8000" }
+$apiUrl = if ($Kubernetes) {
+    if ($Owner -eq "juanfer") { "http://100.77.143.36:30080" } else { "http://localhost:30080" }
+} else {
+    if ($Owner -eq "juanfer") { "http://100.77.143.36:8000" } else { "http://localhost:8000" }
+}
 $startScript = Join-Path $PSScriptRoot "start-edge.ps1"
 
 Write-Host "Iniciando $CameraId - $($profile.Name)"
