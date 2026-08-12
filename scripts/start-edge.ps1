@@ -54,7 +54,9 @@ $env:DETECTION_INTERVAL = $DetectionInterval
 $env:DETECTION_INPUT_SIZE = $DetectionInputSize
 $env:DETECTION_DEVICE = $DetectionDevice
 $env:DETECTION_MODEL = $DetectionModel
-$env:DETECTION_CONFIDENCE = $DetectionConfidence
+$env:DETECTION_CONFIDENCE = $DetectionConfidence.ToString(
+    [System.Globalization.CultureInfo]::InvariantCulture
+)
 $env:VISION_MODE = $VisionMode
 $env:DETECTION_ENABLED = if ($Vision) { "true" } else { "false" }
 if ($Vision -and $VisionMode -eq "motion") {
