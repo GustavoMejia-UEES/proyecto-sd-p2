@@ -16,7 +16,7 @@ foreach ($id in $ids) {
     $arguments = @(
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
-        "-File", $scriptPath,
+        "-File", ('"' + $scriptPath + '"'),
         "-CameraId", $id,
         "-Owner", $Owner
     )

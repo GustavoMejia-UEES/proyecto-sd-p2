@@ -10,7 +10,7 @@ $fleetScript = Join-Path $PSScriptRoot "start-camera-fleet.ps1"
 $arguments = @(
     "-NoProfile",
     "-ExecutionPolicy", "Bypass",
-    "-File", $fleetScript,
+    "-File", ('"' + $fleetScript + '"'),
     "-Owner", $Owner
 )
 if ($Kubernetes) { $arguments += "-Kubernetes" }
