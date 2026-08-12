@@ -4,12 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import API_CORS_ORIGINS, APP_ENV, APP_NAME
 from app.database import check_database
-from app.routes import cameras, events, system
+from app.routes import cameras, events, system, tasks
 from app.realtime import event_manager
 
 app = FastAPI(
     title=APP_NAME,
-    version="0.3.0",
+    version="0.4.0",
     description="ARGUS distributed vision and device monitoring core API",
 )
 
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(cameras.router)
 app.include_router(events.router)
 app.include_router(system.router)
+app.include_router(tasks.router)
 
 
 @app.get("/")

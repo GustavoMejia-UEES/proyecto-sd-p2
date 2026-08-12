@@ -2,7 +2,13 @@ import unittest
 from unittest.mock import patch
 
 from app.main import health, root
-from app.schemas import CameraCreate, CameraProvisionRequest, EventCreate
+from app.schemas import (
+    CameraCreate,
+    CameraProvisionRequest,
+    EventCreate,
+    TaskCreate,
+    TaskUpdate,
+)
 
 
 class ApiContractTests(unittest.TestCase):
@@ -21,6 +27,12 @@ class ApiContractTests(unittest.TestCase):
         event = EventCreate(camera_id="CAM-001", type="motion")
         self.assertEqual(camera.camera_id, "CAM-001")
         self.assertEqual(event.type, "motion")
+
+    def test_task_payload_matches_assignment_contract(self):
+        task = TaskCreate(titulo="Estudiar Kubernetes")
+        update = TaskUpdate(estado="Completada")
+        self.assertEqual(task.estado, "Pendiente")
+        self.assertEqual(update.estado, "Completada")
 
     def test_camera_provisioning_payload_keeps_network_target(self):
         config = CameraProvisionRequest(

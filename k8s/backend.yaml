@@ -37,7 +37,7 @@ spec:
     spec:
       containers:
         - name: argus-api
-          image: argus-api:0.1.0
+          image: argus-api:0.4.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000

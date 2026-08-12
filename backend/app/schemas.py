@@ -15,6 +15,19 @@ EventType = Literal[
     "camera_degraded",
 ]
 EventStatus = Literal["new", "acknowledged", "resolved"]
+TaskStatus = Literal["Pendiente", "En progreso", "Completada"]
+
+
+class TaskCreate(BaseModel):
+    """Payload required by the distributed-systems assignment."""
+
+    titulo: str = Field(min_length=1, max_length=200)
+    estado: TaskStatus = "Pendiente"
+
+
+class TaskUpdate(BaseModel):
+    titulo: str | None = Field(default=None, min_length=1, max_length=200)
+    estado: TaskStatus | None = None
 
 
 class CameraCreate(BaseModel):

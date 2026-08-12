@@ -33,7 +33,23 @@ Base URL local: `http://localhost:8000`.
 | POST | `/api/cameras/{id}/heartbeat` | Actualizar online/offline y FPS |
 | GET/POST | `/api/events` | Timeline y creación de eventos |
 | GET/PATCH/DELETE | `/api/events/{id}` | CRUD de eventos |
+| GET/POST | `/api/tasks` | Listar y crear tareas de la asignaciÃ³n |
+| GET/PATCH/DELETE | `/api/tasks/{id}` | Consultar, editar y eliminar una tarea |
 | WebSocket | `/ws/events` | Eventos `event_created`, `event_updated`, `event_deleted` y `camera_status` |
+
+### Contrato de tareas
+
+La API conserva el contrato solicitado por la asignaciÃ³n:
+
+```json
+{
+  "titulo": "Estudiar Kubernetes",
+  "estado": "Pendiente"
+}
+```
+
+Estados admitidos: `Pendiente`, `En progreso` y `Completada`. La respuesta
+incluye `id`, `created_at` y `updated_at`.
 
 Ejemplo de cámara:
 
@@ -55,12 +71,12 @@ Tailscale, nunca `localhost`.
 ## Docker
 
 ```powershell
-docker build -t argus-api:0.1.0 ./backend
-docker run --rm -p 8000:8000 --env-file backend/.env argus-api:0.1.0
+docker build -t argus-api:0.4.0 ./backend
+docker run --rm -p 8000:8000 --env-file backend/.env argus-api:0.4.0
 
 # Para Docker Hub, sustituye TU_USUARIO por tu usuario real:
-docker tag argus-api:0.1.0 TU_USUARIO/argus-api:0.1.0
-docker push TU_USUARIO/argus-api:0.1.0
+docker tag argus-api:0.4.0 TU_USUARIO/argus-api:0.4.0
+docker push TU_USUARIO/argus-api:0.4.0
 ```
 
 ## Kubernetes en la máquina A
