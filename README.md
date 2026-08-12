@@ -103,6 +103,35 @@ Para una cámara IP o teléfono, usa como `-CameraSource` su URL MJPEG/RTSP. Si
 el frontend está en otra máquina, cambia `EDGE_STREAM_URL` para usar la IP de
 Tailscale en vez de `localhost`.
 
+## Prueba con laptop + webcam USB
+
+Primero conecta la webcam USB y ejecuta:
+
+```powershell
+.\scripts\discover-cameras.ps1
+```
+
+El resultado indica el Ã­ndice de cada cÃ¡mara. Normalmente la integrada es `0`
+y la USB es `1`, pero debes confirmar el valor en tu equipo. Luego puedes usar
+el manifiesto listo para dos cÃ¡maras:
+
+```powershell
+Copy-Item .\scripts\cameras.usb-pair.example.json .\scripts\cameras.local.json
+# Cambia source si discover-cameras.ps1 mostrÃ³ otro Ã­ndice.
+.\scripts\start-edge-fleet.ps1
+```
+
+Streams esperados:
+
+- Laptop: `http://localhost:8091/stream`
+- USB: `http://localhost:8092/stream`
+
+Confirma el registro en:
+
+```powershell
+Invoke-RestMethod http://localhost:8000/api/cameras | ConvertTo-Json -Depth 8
+```
+
 ## Edge dentro de Compose
 
 Para un stream IP o un host Linux con cámara disponible, también existe el
