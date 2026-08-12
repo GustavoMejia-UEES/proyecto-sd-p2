@@ -1,7 +1,9 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("CAM-001", "CAM-002", "CAM-003")]
+    [ValidateSet("CAM-001", "CAM-002", "CAM-003", "CAM-004", "CAM-005")]
     [string]$CameraId,
+    [ValidateSet("gustavo", "juanfer")]
+    [string]$Owner = "gustavo",
     [switch]$Kubernetes
 )
 
@@ -30,9 +32,27 @@ $profiles = @{
         Port = 8093
         Host = "100.77.143.36"
     }
+    "CAM-004" = @{
+        Name = "Camara integrada Juanfer"
+        Type = "integrated"
+        Source = "0"
+        Port = 8091
+        Host = "100.112.215.44"
+    }
+    "CAM-005" = @{
+        Name = "Celular IP Webcam Juanfer"
+        Type = "phone"
+        Source = "http://100.96.186.21:8030/video"
+        Port = 9010
+        Host = "100.112.215.44"
+    }
 }
 
 $profile = $profiles[$CameraId]
+$expectedOwner = if ($CameraId -in @("CAM-001", "CAM-002", "CAM-003")) { "gustavo" } else { "juanfer" }
+if ($Owner -ne $expectedOwner) {
+    throw "$CameraId pertenece al equipo de $expectedOwner. Usa -Owner $expectedOwner."
+}
 $apiUrl = if ($Kubernetes) { "http://localhost:30080" } else { "http://localhost:8000" }
 $startScript = Join-Path $PSScriptRoot "start-edge.ps1"
 

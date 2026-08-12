@@ -87,6 +87,8 @@ class CameraAgent:
         self.detection_condition = threading.Condition()
         self.pending_detection_frame = None
         self.detection_worker = None
+        self.enabled = True
+        self.last_control_poll = 0.0
 
     def start(self):
         if self.running:
@@ -162,6 +164,23 @@ class CameraAgent:
                 json={"fps": round(self.fps, 2), "status": self.status},
                 timeout=3,
             )
+        except requests.RequestException:
+            pass
+
+    def _poll_control(self):
+        """Read the desired state set by the frontend."""
+        try:
+            response = requests.get(
+                f"{CORE_API_URL}/api/cameras/{CAMERA_ID}", timeout=3
+            )
+            if response.ok:
+                desired = response.json().get("enabled", True)
+                if desired != self.enabled:
+                    self.enabled = desired
+                    if not desired and self.capture is not None:
+                        self.capture.release()
+                        self.capture = None
+                        self.last_frame = None
         except requests.RequestException:
             pass
 
@@ -361,6 +380,16 @@ class CameraAgent:
         fps_started = time.monotonic()
 
         while self.running:
+            if time.monotonic() - self.last_control_poll >= 5:
+                self._poll_control()
+                self.last_control_poll = time.monotonic()
+
+            if not self.enabled:
+                self.status = "offline"
+                self._heartbeat()
+                time.sleep(2)
+                continue
+
             if self.capture is None or not self.capture.isOpened():
                 self.status = "degraded"
                 self.capture = cv2.VideoCapture(camera_source())

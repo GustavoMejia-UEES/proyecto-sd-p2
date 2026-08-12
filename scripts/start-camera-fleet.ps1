@@ -1,9 +1,15 @@
 param(
-    [switch]$Kubernetes
+    [switch]$Kubernetes,
+    [ValidateSet("gustavo", "juanfer")]
+    [string]$Owner = "gustavo"
 )
 
 $ErrorActionPreference = "Stop"
-$ids = @("CAM-001", "CAM-002", "CAM-003")
+$ids = if ($Owner -eq "gustavo") {
+    @("CAM-001", "CAM-002", "CAM-003")
+} else {
+    @("CAM-004", "CAM-005")
+}
 $scriptPath = Join-Path $PSScriptRoot "start-camera.ps1"
 
 foreach ($id in $ids) {
@@ -11,7 +17,8 @@ foreach ($id in $ids) {
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-File", $scriptPath,
-        "-CameraId", $id
+        "-CameraId", $id,
+        "-Owner", $Owner
     )
     if ($Kubernetes) { $arguments += "-Kubernetes" }
 

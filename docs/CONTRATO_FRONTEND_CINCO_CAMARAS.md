@@ -8,6 +8,33 @@ cámaras y eventos representan la ampliación distribuida de vigilancia.
 
 ## 1. URL del backend
 
+## Control de cámaras desde el panel
+
+El frontend envía el estado deseado al backend:
+
+```http
+POST /api/cameras/{camera_id}/control
+Content-Type: application/json
+
+{"enabled": true}
+```
+
+Con `enabled: false`, el Edge libera la fuente y deja de emitir frames. Con `enabled: true`, el Edge vuelve a intentar abrir la fuente. El proceso Edge permanece iniciado en cada computadora mediante el supervisor local.
+
+El estado real se consulta con `GET /api/cameras`. `enabled` representa el estado solicitado por el panel; `status` representa el estado observado por heartbeat (`online`, `offline` o `degraded`).
+
+## Perfiles iniciales
+
+| ID | Equipo | Fuente | Stream Edge |
+|---|---|---|---|
+| CAM-001 | Gustavo | Laptop, source `0` | `http://100.77.143.36:8091/stream` |
+| CAM-002 | Gustavo | USB, source `1` | `http://100.77.143.36:8092/stream` |
+| CAM-003 | Gustavo | Celular IP Webcam | `http://100.77.143.36:8093/stream` |
+| CAM-004 | Juanfer | Laptop, source `0` | `http://100.112.215.44:8091/stream` |
+| CAM-005 | Juanfer | Celular IP Webcam | `http://100.112.215.44:9010/stream` |
+
+Los cinco espacios se muestran aunque una cámara esté offline. El frontend no debe asumir que `enabled=true` significa que la cámara está físicamente online.
+
 ### Desarrollo local
 
 ```env

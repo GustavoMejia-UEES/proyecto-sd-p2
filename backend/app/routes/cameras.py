@@ -8,6 +8,7 @@ from app.database import get_collection
 from app.realtime import event_manager
 from app.schemas import (
     CameraCreate,
+    CameraControlRequest,
     CameraProvisionRequest,
     CameraUpdate,
     HeartbeatRequest,
@@ -166,6 +167,25 @@ def update_camera(camera_id: str, payload: CameraUpdate):
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Camera not found")
     return get_camera(camera_id)
+
+
+@router.post("/{camera_id}/control")
+async def control_camera(camera_id: str, payload: CameraControlRequest):
+    """Set the desired state consumed by the Edge process on the host device."""
+    collection = get_collection("cameras")
+    timestamp = now_iso()
+    result = collection.update_one(
+        {"id": camera_id},
+        {"$set": {"enabled": payload.enabled, "updated_at": timestamp}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    camera = get_camera(camera_id)
+    await event_manager.broadcast(
+        {"type": "camera_control", "camera": camera, "enabled": payload.enabled}
+    )
+    return camera
 
 
 @router.delete("/{camera_id}", status_code=status.HTTP_204_NO_CONTENT)

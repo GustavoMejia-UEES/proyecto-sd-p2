@@ -1,5 +1,7 @@
 param(
-    [switch]$Kubernetes
+    [switch]$Kubernetes,
+    [ValidateSet("gustavo", "juanfer")]
+    [string]$Owner = "gustavo"
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,7 +10,8 @@ $fleetScript = Join-Path $PSScriptRoot "start-camera-fleet.ps1"
 $arguments = @(
     "-NoProfile",
     "-ExecutionPolicy", "Bypass",
-    "-File", $fleetScript
+    "-File", $fleetScript,
+    "-Owner", $Owner
 )
 if ($Kubernetes) { $arguments += "-Kubernetes" }
 
